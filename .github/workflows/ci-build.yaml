@@ -53,12 +53,6 @@ jobs:
     - name: Checkout the repository
       uses: actions/checkout@v2
 
-        
-    - name: Set up Golang
-      uses: actions/setup-go@v2
-      with:
-        go-version: '1.23.4'
-
     - name: Extract version from tag
       id: extract_version
       run: |
@@ -70,8 +64,8 @@ jobs:
       run: echo "REPO=${{github.event.repository.name}}" >>${GITHUB_ENV}
     - name: Build the Docker image
       env:
-        SCW_SCRT_TK_PROD:  ${{ secrets.SCW_SCRT_TK_PROD }}
-      run: docker login rg.fr-par.scw.cloud/open-mini-backup -u nologin -p "$SCW_SCRT_TK_PROD"
+        SCW_DOCKER:  ${{ secrets.SCW_DOCKER }}
+      run: docker login rg.fr-par.scw.cloud/open-mini-backup -u nologin -p "$SCW_DOCKER"
     - run: docker build . --file Dockerfile --tag "rg.fr-par.scw.cloud/open-mini-backup/${REPO,,}:${VERSION}"
     - run: docker push "rg.fr-par.scw.cloud/open-mini-backup/${REPO,,}:${VERSION}"
     - run: |
