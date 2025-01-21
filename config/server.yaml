@@ -1,0 +1,25 @@
+server:
+  port: 8080
+  debug: false
+  log: "./logs/server.log"
+
+# secret_manager:
+#   infisical:
+#     name: "infisical"
+#     url: "https://url.fr/"  
+#     api_key: "${{INFISICAL_API_KEY}}"  
+#     project_id: "${{INFISICAL_PROJECT_ID}}" 
+ 
+rstorage:
+  scaleway1:
+    endpoint: "https://s3.fr-par.scw.cloud"
+    bucket_name: "dev-backup-go"
+    access_key: "${{SCALEWAY_ACCESS_KEY}"
+    secret_key: "${{SCALEWAY_SECRET_KEY}}"
+    region: "fr-par"
+  # scaleway2:
+  #   endpoint: "https://s3.nl-ams.scw.cloud"
+  #   bucket_name: "SECOND_BACKUP_BUCKET"
+  #   access_key: "{{aws.ACCESS_KEY}}"
+  #   secret_key: "{{aws.SECRET_KEY}}"
+  #   region: "nl-ams"

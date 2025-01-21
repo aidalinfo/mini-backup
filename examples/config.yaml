@@ -1,0 +1,55 @@
+backups:
+  glpi:
+    type: mysql
+    mysql: 
+      databases: [
+        "glpidb",
+      ]
+      host: "mariadb"
+      port: "3306"
+      user: "root"
+      password: "password"
+      ssl: "false"
+    path:
+      local: "./backups"
+      s3: "backup/glpi/mysql"
+    retention:
+      standard: 
+        days: 1
+      glacier:
+        days: 365
+    schedule:
+      standard: "*/2 * * * *"
+      glacier: "0 18 * * 5"
+  file:
+    type: folder
+    folder: [
+      "/var/www/html/glpi",
+    ]
+    path:
+      local: "./backups"
+      s3: "backup/glpi-dev/folder"
+    retention:
+      standard: 
+        days: 14
+    schedule:
+      standard: "*/60 * * * *"
+      glacier: "0 18 * * 5"
+  mongo:
+    type: mongo
+    mongo: 
+      host: "localhost"
+      port: "27018"
+      user: "root"
+      password: "example"
+      ssl: false
+    path:
+      local: "./backups"
+      s3: "backup/mongo/mongo"
+    retention:
+      standard: 
+        days: 14
+      glacier:
+        days: 365
+    schedule:
+      standard: "*/2 * * * *"

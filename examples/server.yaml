@@ -1,0 +1,18 @@
+server:
+  port: 8080
+  debug: false
+  log: "./logs/server.log"
+
+rstorage:
+  scaleway:
+    endpoint: ""
+    bucket_name: ""
+    access_key: "${{ACCESS_KEY}}"
+    secret_key: "${{SECRET_KEY}}"
+    region: ""
+  ovh:
+    endpoint: ""
+    bucket_name: ""
+    access_key: "${{ACCESS_KEY}}"
+    secret_key: "${{SECRET_KEY}}"
+    region: ""

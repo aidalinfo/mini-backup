@@ -1,0 +1,45 @@
+name: Build dev cli
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  build-deb-package:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+    - name: Checkout the repository
+      uses: actions/checkout@v2
+
+        
+    - name: Set up Golang
+      uses: actions/setup-go@v2
+      with:
+        go-version: '1.23.4'
+
+    - name: Extract version from tag
+      id: extract_version
+      run: |
+        VERSION="${GITHUB_REF#refs/tags/}"
+        VERSION="${VERSION#v}" # Remove 'v' if it exists
+        echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+    - name: Build the binary
+      run: |
+        GOOS=linux GOARCH=amd64 go build -o mini-backup_linux_amd64 cmd/main.go
+        GOOS=linux GOARCH=arm64 go build -o mini-backup-cli_linux_arm64 cli/main.go
+        chmod +x mini-backup_linux_amd64 mini-backup-cli_linux_arm64
+
+    - name: Create release and upload artifacts
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          mini-backup_linux_amd64
+          mini-backup-cli_linux_arm64
+
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

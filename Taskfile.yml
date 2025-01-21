@@ -1,0 +1,18 @@
+version: '3'
+
+tasks:
+  build:
+    cmds:
+      - go build -o backup-cli cli/main.go
+  
+  dev:
+    cmds:
+      - go run cmd/main.go
+
+  sbuild:
+    cmds:
+      - go build -o build/backup-server cmd/main.go
+  
+  cbuild:
+    cmds:
+      - go build -o build/backup-cli cli/main.go
