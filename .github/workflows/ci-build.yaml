@@ -70,5 +70,5 @@ jobs:
     - run: docker push "rg.fr-par.scw.cloud/open-mini-backup/${REPO,,}:${VERSION}"
     - run: |
         docker tag "rg.fr-par.scw.cloud/open-mini-backup/${REPO,,}:${VERSION}" \
-          "rg.fr-par.scw.cloud/open-mini-backup/${REPO,,}:rc-latest"
-    - run: docker push "rg.fr-par.scw.cloud/open-mini-backup/${REPO,,}:rc-latest"
+          "rg.fr-par.scw.cloud/open-mini-backup/${REPO,,}:latest"
+    - run: docker push "rg.fr-par.scw.cloud/open-mini-backup/${REPO,,}:latest"
