@@ -21,7 +21,9 @@ FROM alpine:latest
 RUN apk add --no-cache \
   mongodb-tools \
   mysql-client \
+  mariadb-connector-c \
   bash
+  # https://github.com/arey/mysql-client/issues/5
 
 # Définir le répertoire de travail
 WORKDIR /app
