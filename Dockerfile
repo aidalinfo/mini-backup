@@ -30,10 +30,6 @@ WORKDIR /app
 COPY --from=builder /app/backup-server .
 COPY --from=builder /app/backup-cli .
 
-RUN mkdir -p /app/config
-
-COPY ./examples/*.yaml /app/config/
-
 # Vérifier les permissions (non nécessaire si le binaire est bien construit)
 RUN chmod +x backup-server && chmod +x backup-cli
 

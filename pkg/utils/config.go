@@ -88,13 +88,12 @@ func GetConfig() (*BackupConfig, error) {
 	configPath := GetEnv[string]("BACKUPS_CONFIG_PATH")
 	// fmt.Printf("CONFIG_PATH: %s\n", configPath)
 	if configPath == "" {
-		if GetEnv[string]("GO_ENV") == "dev" {
-			logger.Info("No config path provided, using default config path", source_utils)
-			configPath = "config/config.yaml"
-		}
 		if GetEnv[string]("GO_ENV") == "prod" {
 			logger.Info("No config path provided, using default config /etc/backup-tool/config.yaml", source_utils)
 			configPath = "/etc/backup-tool/config.yaml"
+		} else {
+			logger.Info("No config path provided, using default config path", source_utils)
+			configPath = "config/config.yaml"
 		}
 	}
 	logger.Info(fmt.Sprintf("Loading config from %s", configPath), source_utils)

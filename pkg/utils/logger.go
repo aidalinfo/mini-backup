@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 )
 
 type Logger struct {
@@ -14,25 +15,54 @@ type Logger struct {
 }
 
 // NewLogger creates a new logger that writes to a specified file.
-func newLogger(logFilePath string) (*Logger, error) {
-	// Open the log file for appending; create it if it doesn't exist.
-	file, err := os.OpenFile(logFilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		return nil, err
+func newLogger() (*Logger, error) {
+	// Déterminer le chemin du fichier de log
+	var logFilePath string
+	if GetEnv[string]("LOG_FILE") == "" {
+		logFilePath = "logs/mini-backup.log"
+	} else {
+		logFilePath = GetEnv[string]("LOG_FILE")
 	}
 
-	return &Logger{
-		infoLog:  log.New(file, "INFO: ", log.Ldate|log.Ltime|log.Lshortfile),
-		errorLog: log.New(file, "ERROR: ", log.Ldate|log.Ltime|log.Lshortfile),
-		debugLog: log.New(file, "DEBUG: ", log.Ldate|log.Ltime|log.Lshortfile),
-		file:     file,
-	}, nil
-}
+	// Créer le dossier de logs si nécessaire
+	logDir := filepath.Dir(logFilePath)
+	if err := os.MkdirAll(logDir, 0755); err != nil {
+		return nil, fmt.Errorf("failed to create log directory: %v", err)
+	}
 
-func LoggerFunc() *Logger {
-	logger, err := newLogger("logs/backup-tool.log")
+	// Ouvrir ou créer le fichier de log
+	file, err := os.OpenFile(logFilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
-		fmt.Printf("Failed to initialize logger: %v\n", err)
+		return nil, fmt.Errorf("failed to open log file: %v", err)
+	}
+
+	if GetEnv[string]("LOG_LEVEL") == "debug" {
+		return &Logger{
+			infoLog:  log.New(os.Stdout, "INFO: ", log.Ldate|log.Ltime|log.Lshortfile),
+			errorLog: log.New(os.Stdout, "ERROR: ", log.Ldate|log.Ltime|log.Lshortfile),
+			debugLog: log.New(os.Stdout, "DEBUG: ", log.Ldate|log.Ltime|log.Lshortfile),
+			file:     os.Stdout,
+		}, nil
+	} else {
+		return &Logger{
+			infoLog:  log.New(file, "INFO: ", log.Ldate|log.Ltime|log.Lshortfile),
+			errorLog: log.New(file, "ERROR: ", log.Ldate|log.Ltime|log.Lshortfile),
+			debugLog: log.New(file, "DEBUG: ", log.Ldate|log.Ltime|log.Lshortfile),
+			file:     file,
+		}, nil
+	}
+}
+func LoggerFunc() *Logger {
+	logger, err := newLogger()
+	if err != nil {
+		// En cas d'erreur, créer un logger de secours qui écrit sur stdout
+		fmt.Printf("Failed to initialize file logger: %v\n", err)
+		return &Logger{
+			infoLog:  log.New(os.Stdout, "INFO: ", log.Ldate|log.Ltime|log.Lshortfile),
+			errorLog: log.New(os.Stdout, "ERROR: ", log.Ldate|log.Ltime|log.Lshortfile),
+			debugLog: log.New(os.Stdout, "DEBUG: ", log.Ldate|log.Ltime|log.Lshortfile),
+			file:     os.Stdout,
+		}
 	}
 	return logger
 }

@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"log"
 	"os"
 
 	"github.com/spf13/viper"
@@ -18,21 +17,21 @@ func GetEnv[T any](key string) T {
 	viper.AutomaticEnv() // Charger automatiquement les variables d'environnement
 	err := viper.ReadInConfig()
 	if err != nil {
-		log.Printf("Pas de fichier .env trouvé, utilisation des variables existantes.")
+		// log.Printf("Pas de fichier .env trouvé, utilisation des variables existantes.")
 	}
 	var zero T // Valeur zéro pour le type attendu (ex: 0 pour int, "" pour string, etc.)
 
 	// Obtenir la valeur brute de Viper
 	raw := viper.Get(key)
 	if raw == nil {
-		log.Printf("La variable %s n'est pas définie, retour à la valeur par défaut.", key)
+		// log.Printf("La variable %s n'est pas définie, retour à la valeur par défaut.", key)
 		return zero // Retourne la valeur par défaut pour le type attendu
 	}
 
 	// Convertir en fonction du type demandé
 	val, ok := raw.(T)
 	if !ok {
-		log.Printf("Impossible de convertir la variable %s en type attendu, retour à la valeur par défaut.", key)
+		// log.Printf("Impossible de convertir la variable %s en type attendu, retour à la valeur par défaut.", key)
 		return zero // Retourne la valeur par défaut en cas de type non correspond
 	}
 

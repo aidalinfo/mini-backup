@@ -8,25 +8,17 @@ import (
 )
 
 func main() {
-	// configserver, err := utils.GetConfigServer()
-	// if err != nil {
-	// 	fmt.Println("Erreur lors de la récupération des configurations du serveur")
-	// 	fmt.Print(err)
-	// 	return
-	// }
-	// fmt.Println("configserver !!!!!!!!!!!!!!!!!!!")
-	logger := utils.LoggerFunc()
-	// err := backup.BackupKube("./kubeconfig.yaml", "./backups")
-	// if err != nil {
-	// 	logger.Error(fmt.Sprintf("Erreur lors de la sauvegarde Kubernetes : %v", err))
-	// }
 
-	// err := restore.RestoreKube("./kubeconfig2.yaml", "./backups/k8s-backup-2025-01-19-20-25-36.json")
-	// Initialize logger
-	// if err != nil {
-	// 	logger.Error(fmt.Sprintf("Failed to load configuration: %v", err))
-	// 	return
-	// }
+	logger := utils.LoggerFunc()
+
+	if utils.GetEnv[bool]("AUTO_CONFIG") || utils.GetEnv[string]("AUTO_CONFIG") == "true" {
+		err := utils.AutoConfigurationFunc()
+		if err != nil {
+			logger.Error(fmt.Sprintf("Erreur lors de la configuration automatique : %v", err))
+			return
+		}
+	}
+
 	serverConfig, err := utils.GetConfigServer()
 	if err != nil {
 		logger.Error(fmt.Sprintf("Failed to load configuration: %v", err))
