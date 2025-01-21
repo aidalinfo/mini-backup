@@ -1,0 +1,14 @@
+backups/
+.env
+aes.key
+logs/*.log
+glpi/
+config/config.dev.yaml
+mariadb/data/
+backup-cli
+backup-tool
+build/
+.env.compose
+logs_server/
+kubeconfig.yaml
+kubeconfig2.yaml
