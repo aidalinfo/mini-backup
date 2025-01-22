@@ -73,8 +73,31 @@ func restoreProcess(name string, config utils.Backup, version string) (string, e
 	logger := utils.LoggerFunc()
 	logger.Info(fmt.Sprintf("Starting restore process for: %s, version: %s", name, version))
 
-	// Initialiser le gestionnaire S3
-	s3client, err := utils.ManagerStorageFunc()
+	// Charger la configuration du serveur
+	configServer, err := utils.GetConfigServer()
+	if err != nil {
+		logger.Error("Failed to load server configuration")
+		return "", err
+	}
+
+	// Vérifier si RStorage contient au moins un élément
+	if len(configServer.RStorage) == 0 {
+		err := fmt.Errorf("no storage configuration found")
+		logger.Error(err.Error())
+		return "", err
+	}
+
+	// Obtenir le premier élément de RStorage
+	var firstStorageName string
+	var firstStorageConfig utils.RStorageConfig
+	for name, config := range configServer.RStorage {
+		firstStorageName = name
+		firstStorageConfig = config
+		break
+	}
+
+	// Initialiser le client S3 avec le premier storage
+	s3client, err := utils.RstorageManager(firstStorageName, &firstStorageConfig)
 	if err != nil {
 		logger.Error(fmt.Sprintf("Failed to initialize S3 manager: %v", err))
 		return "", err

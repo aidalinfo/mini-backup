@@ -59,11 +59,35 @@ func ListFilesForBackup(c *fiber.Ctx) error {
 		})
 	}
 
-	// Initialiser le gestionnaire S3
-	s3client, err := utils.ManagerStorageFunc()
+	// Charger la configuration du serveur
+	configServer, err := utils.GetConfigServer()
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "Failed to initialize S3 manager",
+			"error": "Failed to load server configuration",
+		})
+	}
+
+	// Vérifier si RStorage contient au moins un élément
+	if len(configServer.RStorage) == 0 {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "No storage configuration found",
+		})
+	}
+
+	// Obtenir le premier élément de RStorage
+	var firstStorageName string
+	var firstStorageConfig utils.RStorageConfig
+	for name, config := range configServer.RStorage {
+		firstStorageName = name
+		firstStorageConfig = config
+		break
+	}
+
+	// Initialiser le client S3 avec le premier storage
+	s3client, err := utils.RstorageManager(firstStorageName, &firstStorageConfig)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": fmt.Sprintf("Failed to initialize S3 manager: %v", err),
 		})
 	}
 
