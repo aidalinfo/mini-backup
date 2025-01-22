@@ -53,18 +53,6 @@ func backupProcess(path []string, config utils.Backup) error {
 			}
 			logger.Info(fmt.Sprintf("Successfully uploaded %s to %s", encryptedPath, configServer.BucketName))
 		}
-		// s3client, err := utils.ManagerStorageFunc()
-		// if err != nil {
-		// 	logger.Error(fmt.Sprintf("Failed to get storage manager: %v", err))
-		// 	continue
-		// }
-		// s3client.ManageRetention(config.Path.S3, config.Retention.Standard.Days)
-		// s3FilePath := filepath.Join(config.Path.S3, filepath.Base(encryptedPath))
-		// err = s3client.Upload(encryptedPath, s3FilePath)
-		// if err != nil {
-		// 	logger.Error(fmt.Sprintf("Failed to upload %s to %s: %v", encryptedPath, config.Path.S3, err))
-		// 	continue
-		// }
 		deleteFile(compressed)
 		deleteFile(encryptedPath)
 	}

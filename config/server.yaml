@@ -14,7 +14,7 @@ rstorage:
   scaleway1:
     endpoint: "https://s3.fr-par.scw.cloud"
     bucket_name: "dev-backup-go"
-    access_key: "${{SCALEWAY_ACCESS_KEY}"
+    access_key: "${{SCALEWAY_ACCESS_KEY}}"
     secret_key: "${{SCALEWAY_SECRET_KEY}}"
     region: "fr-par"
   # scaleway2:

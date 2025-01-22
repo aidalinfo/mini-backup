@@ -63,7 +63,7 @@ func AwsCredentialFileCreateFunc(accessKey, secretKey string, header string) err
 			sectionHeader = "[aidalinfo-backup]"
 		}
 	} else {
-		sectionHeader = header
+		sectionHeader = "[" + header + "]"
 	}
 	if existingContent != "" && containsSection(existingContent, sectionHeader) {
 		logger.Info(fmt.Sprintf("La section %s existe déjà dans le fichier credentials. Aucune modification nécessaire.", sectionHeader))
@@ -106,7 +106,7 @@ func NewS3Manager(bucket, region, endpoint string, awsprofile string) (*S3Manage
 		if GetEnv[string]("GO_ENV") == "dev" {
 			profileName = "dev-backup"
 		} else {
-			profileName = "[aidalinfo-backup]"
+			profileName = "aidalinfo-backup"
 		}
 	} else {
 		profileName = awsprofile
@@ -362,7 +362,7 @@ func RstorageManager(name string, config *RStorageConfig) (*S3Manager, error) {
 		logger.Error(fmt.Sprintf("Erreur lors de la génération du fichier AWS credentials : %v", err))
 	}
 	// Initialisation du S3Manager
-	s3Manager, err := NewS3Manager(config.BucketName, config.Region, config.Endpoint, "")
+	s3Manager, err := NewS3Manager(config.BucketName, config.Region, config.Endpoint, name)
 	if err != nil {
 		logger.Error(fmt.Sprintf("Erreur lors de l'initialisation du gestionnaire S3 : %v\n", err))
 	}

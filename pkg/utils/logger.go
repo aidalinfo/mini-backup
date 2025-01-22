@@ -57,12 +57,6 @@ func LoggerFunc() *Logger {
 	if err != nil {
 		// En cas d'erreur, créer un logger de secours qui écrit sur stdout
 		fmt.Printf("Failed to initialize file logger: %v\n", err)
-		return &Logger{
-			infoLog:  log.New(os.Stdout, "INFO: ", log.Ldate|log.Ltime|log.Lshortfile),
-			errorLog: log.New(os.Stdout, "ERROR: ", log.Ldate|log.Ltime|log.Lshortfile),
-			debugLog: log.New(os.Stdout, "DEBUG: ", log.Ldate|log.Ltime|log.Lshortfile),
-			file:     os.Stdout,
-		}
 	}
 	return logger
 }
