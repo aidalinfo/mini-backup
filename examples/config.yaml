@@ -52,7 +52,7 @@ backups:
       glacier:
         days: 365
     schedule:
-      standard: "*/2 * * * *"
+      standard: "*/5 * * * *"
   # s3-storage:
   #   type: s3
   #   s3: 

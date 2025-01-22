@@ -1,15 +1,15 @@
 services:
-  # mini-backup:
-  #   build: .
-  #   container_name: mini-backup
-  #   ports:
-  #     - "8080:8080"
-  #   environment:
-  #     - AUTO_CONFIG=true
-    # volumes:
-      # - ./config/config.yaml:/app/config/config.yaml
-      # - ./logs_server:/app/logs
-      # - .env.compose:/app/.env
+  mini-backup:
+    build: .
+    container_name: mini-backup
+    ports:
+      - "8080:8080"
+    environment:
+      - AUTO_CONFIG=true
+    volumes:
+      - ./config:/app/config
+      - ./logs_server:/app/logs
+      - .env.compose:/app/.env
 #MariaDB Container
   mariadb:
     image: mariadb:10.7
