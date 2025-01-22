@@ -1,9 +1,9 @@
 backups:
-  glpi:
+  mariadb_backup:
     type: mysql
     mysql: 
       databases: [
-        "glpidb",
+        "superdb",
       ]
       host: "mariadb"
       port: "3306"
@@ -12,14 +12,14 @@ backups:
       ssl: "false"
     path:
       local: "./backups"
-      s3: "backup/glpi/mysql"
+      s3: "backup/mariadb_backup"
     retention:
       standard: 
         days: 1
       glacier:
         days: 365
     schedule:
-      standard: "*/10 * * * *"
+      standard: "*/2 * * * *"
       glacier: "0 18 * * 5"
   # file:
   #   type: folder
@@ -38,8 +38,8 @@ backups:
   mongo:
     type: mongo
     mongo: 
-      host: "localhost"
-      port: "27018"
+      host: "mongo"
+      port: "27017"
       user: "root"
       password: "example"
       ssl: false
@@ -52,25 +52,25 @@ backups:
       glacier:
         days: 365
     schedule:
-      standard: "*/10 * * * *"
-  s3-storage:
-    type: s3
-    s3: 
-      bucket: [
-        "my bucket"
-      ]
-      endpoint: "http://minio:9000"
-      region: "fr-par"
-      ACCESS_KEY: "minioadmin"
-      SECRET_KEY: "miniopassword"
-    path:
-      local: "./backups"
-      s3: "backup/minio/"
-    retention:
-      standard: 
-        days: 14
-      glacier:
-        days: 365
-    schedule:
-      standard: "*/10 * * * *"
-      glacier: "0 18 * * 5"
+      standard: "*/2 * * * *"
+  # s3-storage:
+  #   type: s3
+  #   s3: 
+  #     bucket: [
+  #       "my bucket"
+  #     ]
+  #     endpoint: "http://minio:9000"
+  #     region: "fr-par"
+  #     ACCESS_KEY: "minioadmin"
+  #     SECRET_KEY: "miniopassword"
+  #   path:
+  #     local: "./backups"
+  #     s3: "backup/minio/"
+  #   retention:
+  #     standard: 
+  #       days: 14
+  #     glacier:
+  #       days: 365
+  #   schedule:
+  #     standard: "*/10 * * * *"
+  #     glacier: "0 18 * * 5"

@@ -27,7 +27,6 @@ func backupProcess(path []string, config utils.Backup) error {
 			logger.Info(fmt.Sprintf("Successfully compressed %s", path))
 			compressed = cp
 			compressedPath = append(compressedPath, cp)
-			deleteFile(p)
 		}
 		encryptedPath := compressed + ".enc"
 		utils.EncryptFile(compressed, encryptedPath)
@@ -53,6 +52,7 @@ func backupProcess(path []string, config utils.Backup) error {
 			}
 			logger.Info(fmt.Sprintf("Successfully uploaded %s to %s", encryptedPath, configServer.BucketName))
 		}
+		deleteFile(p)
 		deleteFile(compressed)
 		deleteFile(encryptedPath)
 	}
@@ -122,7 +122,6 @@ func CoreBackup(name string) error {
 			return err
 		}
 		resultArray := []string{result}
-		resultArray = append(resultArray, result)
 		backupProcess(resultArray, config.Backups[name])
 		logger.Info(fmt.Sprintf("Successfully backed up MongoDB for %s: %v", name, result))
 		return nil

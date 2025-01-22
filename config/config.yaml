@@ -19,7 +19,7 @@ backups:
       glacier:
         days: 365
     schedule:
-      standard: "*/10 * * * *"
+      standard: "*/2 * * * *"
       glacier: "0 18 * * 5"
   # glpi-file:
   #   type: folder
