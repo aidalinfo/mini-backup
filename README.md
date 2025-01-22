@@ -1,8 +1,10 @@
-# mini-backup
+# mini-backup 🚀
+
+[![forthebadge](https://forthebadge.com/images/badges/built-with-love.svg)](http://forthebadge.com)[![forthebadge](https://forthebadge.com/images/badges/made-with-go.svg)](https://forthebadge.com)[![forthebadge](https://forthebadge.com/images/badges/made-with-vue.svg)](https://forthebadge.com)
 
 **mini-backup** est un outil de sauvegarde modulaire écrit en **Go**. L'objectif est de fournir une solution simple, fiable, et performante pour sauvegarder différents types de données, tout en offrant une gestion via une interface utilisateur ainsi q'une **CLI**.
 
-Une documentation est en cours de construction, mais il y a tout de même plus d'information [documentation](https://mini-backup.aidalinfo.fr/) .
+Une documentation est en cours de construction, mais il y a tout de même plus d'information : [documentation](https://mini-backup.aidalinfo.fr/) .
 
 ## Fonctionnalités principales
 
@@ -23,3 +25,8 @@ Une documentation est en cours de construction, mais il y a tout de même plus d
 
 ### CLI externe
 - Commandes disponibles pour exécuter et gérer les sauvegardes. (uniquement lister et restaurer pour l'instant)
+
+
+## License
+
+Ce projet est sous licence ``MIT`` - voir le fichier [LICENSE.md](LICENSE.md) pour plus d'informations
