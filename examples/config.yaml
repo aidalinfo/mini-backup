@@ -19,22 +19,22 @@ backups:
       glacier:
         days: 365
     schedule:
-      standard: "*/2 * * * *"
+      standard: "*/10 * * * *"
       glacier: "0 18 * * 5"
-  file:
-    type: folder
-    folder: [
-      "/var/www/html/glpi",
-    ]
-    path:
-      local: "./backups"
-      s3: "backup/glpi-dev/folder"
-    retention:
-      standard: 
-        days: 14
-    schedule:
-      standard: "*/60 * * * *"
-      glacier: "0 18 * * 5"
+  # file:
+  #   type: folder
+  #   folder: [
+  #     "/var/www/html/glpi",
+  #   ]
+  #   path:
+  #     local: "./backups"
+  #     s3: "backup/glpi-dev/folder"
+  #   retention:
+  #     standard: 
+  #       days: 14
+  #   schedule:
+  #     standard: "*/60 * * * *"
+  #     glacier: "0 18 * * 5"
   mongo:
     type: mongo
     mongo: 
@@ -52,4 +52,25 @@ backups:
       glacier:
         days: 365
     schedule:
-      standard: "*/2 * * * *"
+      standard: "*/10 * * * *"
+  s3-storage:
+    type: s3
+    s3: 
+      bucket: [
+        "my bucket"
+      ]
+      endpoint: "http://minio:9000"
+      region: "fr-par"
+      ACCESS_KEY: "minioadmin"
+      SECRET_KEY: "miniopassword"
+    path:
+      local: "./backups"
+      s3: "backup/minio/"
+    retention:
+      standard: 
+        days: 14
+      glacier:
+        days: 365
+    schedule:
+      standard: "*/10 * * * *"
+      glacier: "0 18 * * 5"
