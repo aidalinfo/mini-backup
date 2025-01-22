@@ -12,7 +12,6 @@ func ApiServer() *fiber.App {
 	app := fiber.New()
 	app.Use(cors.New(cors.Config{
 		AllowOrigins: "*",
-		AllowMethods: "*",
 	}))
 	// Configurer les routes
 	SetupRoutes(app)
