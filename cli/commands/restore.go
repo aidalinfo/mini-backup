@@ -39,20 +39,37 @@ func NewRestoreCommand() *cobra.Command {
 						return
 					}
 
-					// Initialiser le gestionnaire S3
-					s3client, err := utils.ManagerStorageFunc()
-					if err != nil {
-						fmt.Printf("Erreur lors de l'initialisation du gestionnaire S3 : %v\n", err)
-						return
-					}
+				// Charger la configuration du serveur
+				configServer, err := utils.GetConfigServer()
+				if err != nil {
+					fmt.Printf("Erreur lors du chargement de la configuration du serveur : %v\n", err)
+					return
+				}
 
-					// Lister les backups disponibles
-					fmt.Println("Listing des backups disponibles :")
-					files, err := s3client.ListBackups(config.Backups[name].Path.S3)
-					if err != nil {
-						fmt.Printf("Erreur lors de la liste des backups : %v\n", err)
-						return
-					}
+				// Obtenir le premier storage disponible
+				var firstStorageName string
+				var firstStorageConfig utils.RStorageConfig
+				for name, config := range configServer.RStorage {
+					firstStorageName = name
+					firstStorageConfig = config
+					break
+				}
+
+				// Initialiser le client S3 avec la nouvelle méthode
+				s3client, err := utils.RstorageManager(firstStorageName, &firstStorageConfig)
+				if err != nil {
+					fmt.Printf("Erreur lors de l'initialisation du gestionnaire S3 : %v\n", err)
+					return
+				}
+
+				// Lister les backups disponibles
+				fmt.Println("Listing des backups disponibles :")
+				files, err := s3client.ListBackups(config.Backups[name].Path.S3)
+				if err != nil {
+					fmt.Printf("Erreur lors de la liste des backups : %v\n", err)
+					return
+				}
+
 
 					// Afficher les fichiers disponibles
 					for i, file := range files {
