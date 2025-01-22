@@ -15,7 +15,7 @@ func SetupRoutes(app *fiber.App) {
 	api.Get("/backups", handlers.ListBackups)
 	// Route pour obtenir les backups détaillés
 	api.Get("/backups/all", handlers.DetailBackup)
-	app.Post("/restore/:name", handlers.RestoreBackup)
+	api.Post("/restore/:name", handlers.RestoreBackup)
 	// Route pour lister les fichiers d'un backup
 	api.Get("/backups/:name/files", handlers.ListFilesForBackup)
 
