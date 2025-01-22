@@ -27,7 +27,7 @@ services:
       "
 
   mini-backup:
-    image: local:go
+    image: rg.fr-par.scw.cloud/open-mini-backup/mini-backup:latest
     container_name: mini-backup
     restart: always
     volumes:
