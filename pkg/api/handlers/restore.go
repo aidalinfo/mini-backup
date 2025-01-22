@@ -20,7 +20,7 @@ func RestoreBackup(c *fiber.Ctx) error {
 		logger.Error(fmt.Sprintf("Erreur de restauration : %v", err), "SOURCE API")
 		log.Printf("Erreur de restauration : %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "Failed to restore backup", err,
+			"error": fmt.Sprintf("Failed to restore backup: %v", err),
 		})
 	}
 
