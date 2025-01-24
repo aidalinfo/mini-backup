@@ -11,12 +11,18 @@ server:
 #     project_id: "${{INFISICAL_PROJECT_ID}}" 
  
 rstorage:
-  scaleway1:
-    endpoint: "https://s3.fr-par.scw.cloud"
-    bucket_name: "dev-backup-go"
-    access_key: "${{SCALEWAY_ACCESS_KEY}}"
-    secret_key: "${{SCALEWAY_SECRET_KEY}}"
+  minio:
+    endpoint: "http://localhost:9000"
+    bucket_name: "backup"
+    access_key: "minioadmin"
+    secret_key: "miniopassword"
     region: "fr-par"
+  # scaleway1:
+  #   endpoint: "https://s3.fr-par.scw.cloud"
+  #   bucket_name: "dev-backup-go"
+  #   access_key: "${{SCALEWAY_ACCESS_KEY}}"
+  #   secret_key: "${{SCALEWAY_SECRET_KEY}}"
+  #   region: "fr-par"
   # scaleway2:
   #   endpoint: "https://s3.nl-ams.scw.cloud"
   #   bucket_name: "SECOND_BACKUP_BUCKET"

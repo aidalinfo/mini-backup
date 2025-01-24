@@ -8,9 +8,9 @@ import (
 )
 
 func BackupRemoteS3(name string, config utils.Backup) ([]string, error) {
-	credentialHeader := "[" + name + "]"
+	// credentialHeader := "[" + name + "]"
 	logger.Debug(fmt.Sprintf("Information de connexion S3 : %v", config.S3))
-	err := utils.AwsCredentialFileCreateFunc(config.S3.ACCESS_KEY, config.S3.SECRET_KEY, credentialHeader)
+	err := utils.AwsCredentialFileCreateFunc(config.S3.ACCESS_KEY, config.S3.SECRET_KEY, name)
 	if err != nil {
 		return nil, err
 	}

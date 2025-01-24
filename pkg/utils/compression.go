@@ -137,164 +137,132 @@ func compressDirectory(directoryPath, compressedPath string) error {
 
 // Decompress décompresse un fichier gzip ou tar.gz
 func Decompress(compressedPath, outputPath string) (string, error) {
-	logger := LoggerFunc()
+    logger := LoggerFunc()
 
-	// Ouvrir le fichier compressé
-	file, err := os.Open(compressedPath)
-	if err != nil {
-		logger.Error(fmt.Sprintf("Failed to open compressed file: %s : %v", compressedPath, err))
-		return "", err
-	}
-	defer file.Close()
+    // Ouvrir le fichier compressé
+    file, err := os.Open(compressedPath)
+    if err != nil {
+        logger.Error(fmt.Sprintf("Failed to open compressed file: %s : %v", compressedPath, err))
+        return "", err
+    }
+    defer file.Close()
 
-	// Créer un Reader gzip
-	gzipReader, err := gzip.NewReader(file)
-	if err != nil {
-		logger.Error(fmt.Sprintf("Failed to create gzip reader for: %s : %v", compressedPath, err))
-		return "", err
-	}
-	defer gzipReader.Close()
+    // Si c'est un fichier .gz, le décompresser d'abord
+    if strings.HasSuffix(compressedPath, ".gz") {
+        // Créer un Reader gzip
+        gzipReader, err := gzip.NewReader(file)
+        if err != nil {
+            logger.Error(fmt.Sprintf("Failed to create gzip reader for: %s : %v", compressedPath, err))
+            return "", err
+        }
+        defer gzipReader.Close()
 
-	// Vérifier si c'est une archive tar.gz ou un fichier gzip
-	if filepath.Ext(compressedPath) == ".gz" && filepath.Ext(strings.TrimSuffix(compressedPath, ".gz")) == ".tar" {
-		// Décompresser une archive tar.gz
-		tarReader := tar.NewReader(gzipReader)
-		logger.Info(fmt.Sprintf("Starting decompression of tar.gz archive: %s", compressedPath))
+        // Décompresser le fichier .gz
+        decompressedPath := strings.TrimSuffix(compressedPath, ".gz")
+        outputFile, err := os.Create(decompressedPath)
+        if err != nil {
+            logger.Error(fmt.Sprintf("Failed to create output file: %s : %v", decompressedPath, err))
+            return "", err
+        }
+        defer outputFile.Close()
 
-		// Créer le répertoire de sortie si nécessaire
-		if err := os.MkdirAll(outputPath, 0755); err != nil {
-			logger.Error(fmt.Sprintf("Failed to create output directory: %s : %v", outputPath, err))
-			return "", err
-		}
+        if _, err := io.Copy(outputFile, gzipReader); err != nil {
+            logger.Error(fmt.Sprintf("Failed to write decompressed file: %s : %v", decompressedPath, err))
+            return "", err
+        }
 
-		// Parcourir les fichiers dans l'archive tar
-		for {
-			header, err := tarReader.Next()
-			if err == io.EOF {
-				// Fin de l'archive
-				break
-			}
-			if err != nil {
-				logger.Error(fmt.Sprintf("Error reading tar archive: %s : %v", compressedPath, err))
-				return "", err
-			}
+        // Fermer les fichiers pour pouvoir les réutiliser
+        outputFile.Close()
+        file.Close()
 
-			// Définir le chemin de sortie
-			targetPath := filepath.Join(outputPath, header.Name)
+        // Si le résultat est un .tar, le décompresser également
+        if strings.HasSuffix(decompressedPath, ".tar") {
+            logger.Info(fmt.Sprintf("Decompressing tar file: %s", decompressedPath))
+            err = DecompressTar(decompressedPath, outputPath)
+            if err != nil {
+                return "", err
+            }
+            // Nettoyer le fichier .tar intermédiaire
+            os.Remove(decompressedPath)
+            return outputPath, nil
+        }
 
-			// Vérifier le type d'entrée
-			switch header.Typeflag {
-			case tar.TypeDir:
-				// Créer un répertoire
-				if err := os.MkdirAll(targetPath, os.FileMode(header.Mode)); err != nil {
-					logger.Error(fmt.Sprintf("Failed to create directory: %s : %v", targetPath, err))
-					return "", err
-				}
-				logger.Debug(fmt.Sprintf("Created directory: %s", targetPath))
-			case tar.TypeReg:
-				// Créer un fichier
-				file, err := os.Create(targetPath)
-				if err != nil {
-					logger.Error(fmt.Sprintf("Failed to create file: %s : %v", targetPath, err))
-					return "", err
-				}
-				defer file.Close()
+        return decompressedPath, nil
+    }
 
-				// Copier le contenu dans le fichier
-				if _, err := io.Copy(file, tarReader); err != nil {
-					logger.Error(fmt.Sprintf("Failed to write file: %s : %v", targetPath, err))
-					return "", err
-				}
-				logger.Debug(fmt.Sprintf("Extracted file: %s", targetPath))
-			default:
-				logger.Error(fmt.Sprintf("Unsupported tar entry type for: %s", header.Name))
-			}
-		}
+    // Si c'est un fichier .tar, le décompresser directement
+    if strings.HasSuffix(compressedPath, ".tar") {
+        err = DecompressTar(compressedPath, outputPath)
+        if err != nil {
+            return "", err
+        }
+        return outputPath, nil
+    }
 
-		logger.Info(fmt.Sprintf("Successfully decompressed tar.gz archive: %s", compressedPath))
-		return outputPath, nil
-	} else {
-		// Décompresser un fichier gzip
-		logger.Info(fmt.Sprintf("Starting decompression of gzip file: %s", compressedPath))
-		decompressedFilePath := strings.TrimSuffix(compressedPath, ".gz")
-		outputFile, err := os.Create(decompressedFilePath)
-		if err != nil {
-			logger.Error(fmt.Sprintf("Failed to create output file: %s : %v", decompressedFilePath, err))
-			return "", err
-		}
-		defer outputFile.Close()
-
-		// Copier le contenu du gzip dans le fichier
-		if _, err := io.Copy(outputFile, gzipReader); err != nil {
-			logger.Error(fmt.Sprintf("Failed to write decompressed file: %s : %v", decompressedFilePath, err))
-			return "", err
-		}
-		logger.Info(fmt.Sprintf("Successfully decompressed gzip file: %s to: %s", compressedPath, decompressedFilePath))
-
-		// Vérifier si le fichier décompressé est une archive tar
-		if filepath.Ext(decompressedFilePath) == ".tar" {
-			logger.Info(fmt.Sprintf("Detected tar archive: %s, decompressing further", decompressedFilePath))
-			tarOutputPath := strings.TrimSuffix(decompressedFilePath, ".tar")
-			err := DecompressTar(decompressedFilePath, tarOutputPath)
-			if err != nil {
-				return "", err
-			}
-			// Supprimer le fichier .tar après extraction
-			if err := os.Remove(decompressedFilePath); err != nil {
-				logger.Error(fmt.Sprintf("Failed to delete tar file: %s : %v", decompressedFilePath, err))
-			}
-			return tarOutputPath, nil
-		}
-
-		return decompressedFilePath, nil
-	}
+    return "", fmt.Errorf("unsupported file format: %s", compressedPath)
 }
 
 // DecompressTar décompresse une archive tar
 func DecompressTar(tarPath, outputPath string) error {
-	file, err := os.Open(tarPath)
-	if err != nil {
-		logger.Error(fmt.Sprintf("Failed to open tar file: %s : %v", tarPath, err))
-		return err
-	}
-	defer file.Close()
+    file, err := os.Open(tarPath)
+    if err != nil {
+        logger.Error(fmt.Sprintf("Failed to open tar file: %s : %v", tarPath, err))
+        return err
+    }
+    defer file.Close()
 
-	tarReader := tar.NewReader(file)
-	logger.Info(fmt.Sprintf("Starting decompression of tar archive: %s", tarPath))
+    // Créer le répertoire de sortie principal
+    err = os.MkdirAll(outputPath, 0755)
+    if err != nil {
+        logger.Error(fmt.Sprintf("Failed to create output directory: %s : %v", outputPath, err))
+        return err
+    }
 
-	for {
-		header, err := tarReader.Next()
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			logger.Error(fmt.Sprintf("Error reading tar archive: %s : %v", tarPath, err))
-			return err
-		}
+    tarReader := tar.NewReader(file)
+    logger.Info(fmt.Sprintf("Starting decompression of tar archive: %s", tarPath))
 
-		targetPath := filepath.Join(outputPath, header.Name)
+    for {
+        header, err := tarReader.Next()
+        if err == io.EOF {
+            break
+        }
+        if err != nil {
+            logger.Error(fmt.Sprintf("Error reading tar archive: %s : %v", tarPath, err))
+            return err
+        }
 
-		switch header.Typeflag {
-		case tar.TypeDir:
-			if err := os.MkdirAll(targetPath, os.FileMode(header.Mode)); err != nil {
-				logger.Error(fmt.Sprintf("Failed to create directory: %s : %v", targetPath, err))
-				return err
-			}
-		case tar.TypeReg:
-			file, err := os.Create(targetPath)
-			if err != nil {
-				logger.Error(fmt.Sprintf("Failed to create file: %s : %v", targetPath, err))
-				return err
-			}
-			defer file.Close()
-			if _, err := io.Copy(file, tarReader); err != nil {
-				logger.Error(fmt.Sprintf("Failed to write file: %s : %v", targetPath, err))
-				return err
-			}
-		default:
-			logger.Error(fmt.Sprintf("Unsupported tar entry type for: %s", header.Name))
-		}
-	}
-	logger.Info(fmt.Sprintf("Successfully decompressed tar archive: %s", tarPath))
-	return nil
+        targetPath := filepath.Join(outputPath, header.Name)
+
+        // Créer le répertoire parent pour tous les types de fichiers
+        err = os.MkdirAll(filepath.Dir(targetPath), 0755)
+        if err != nil {
+            logger.Error(fmt.Sprintf("Failed to create parent directory for: %s : %v", targetPath, err))
+            return err
+        }
+
+        switch header.Typeflag {
+        case tar.TypeDir:
+            if err := os.MkdirAll(targetPath, os.FileMode(header.Mode)); err != nil {
+                logger.Error(fmt.Sprintf("Failed to create directory: %s : %v", targetPath, err))
+                return err
+            }
+        case tar.TypeReg:
+            file, err := os.Create(targetPath)
+            if err != nil {
+                logger.Error(fmt.Sprintf("Failed to create file: %s : %v", targetPath, err))
+                return err
+            }
+            
+            if _, err := io.Copy(file, tarReader); err != nil {
+                file.Close()
+                logger.Error(fmt.Sprintf("Failed to write file: %s : %v", targetPath, err))
+                return err
+            }
+            file.Close()
+        default:
+            logger.Error(fmt.Sprintf("Unsupported tar entry type for: %s", header.Name))
+        }
+    }
+    logger.Info(fmt.Sprintf("Successfully decompressed tar archive: %s", tarPath))
+    return nil
 }

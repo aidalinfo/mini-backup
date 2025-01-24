@@ -1,26 +1,43 @@
 backups:
-  glpi:
-    type: mysql
-    mysql: 
-      databases: [
-        "glpidb",
-      ]
-      host: "localhost"
-      port: "3306"
-      user: "glpi_user"
-      password: "glpi"
-      ssl: "false"
+  minio-data:
+    type: s3
+    s3:
+      bucket:
+        - data
+      endpoint: "http://localhost:9002"
+      region: "fr-par"
+      ACCESS_KEY: "minioadmin"
+      SECRET_KEY: "miniopassword"
     path:
       local: "./backups"
-      s3: "backup/glpi-dev/mysql"
+      s3: "backup/minio-data"
     retention:
-      standard: 
-        days: 1
-      glacier:
-        days: 365
+      standard:
+        days: 14
     schedule:
       standard: "*/2 * * * *"
-      glacier: "0 18 * * 5"
+  # glpi:
+  #   type: mysql
+  #   mysql: 
+  #     databases: [
+  #       "glpidb",
+  #     ]
+  #     host: "localhost"
+  #     port: "3306"
+  #     user: "glpi_user"
+  #     password: "glpi"
+  #     ssl: "false"
+  #   path:
+  #     local: "./backups"
+  #     s3: "backup/glpi-dev/mysql"
+  #   retention:
+  #     standard: 
+  #       days: 1
+  #     glacier:
+  #       days: 365
+  #   schedule:
+  #     standard: "*/2 * * * *"
+  #     glacier: "0 18 * * 5"
   # glpi-file:
   #   type: folder
   #   folder: [
