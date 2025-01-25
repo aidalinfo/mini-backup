@@ -62,35 +62,3 @@ services:
       /usr/bin/mc anonymous set download minio2/data;
       exit 0;
       "
-# #MariaDB Container
-#   mariadb:
-#     image: mariadb:10.7
-#     container_name: mariadb
-#     volumes:
-#       - ./mariadb/data:/var/lib/mysql
-#     ports:
-#       - "3306:3306"
-#     hostname: mariadb
-#     environment:
-#       - MARIADB_ROOT_PASSWORD=password
-#       - MARIADB_DATABASE=glpidb
-#       - MARIADB_USER=glpi_user
-#       - MARIADB_PASSWORD=glpi
-
-# #GLPI Container
-#   glpi:
-#     image: diouxx/glpi
-#     container_name : glpi
-#     volumes:
-#       - ./glpi/data:/var/www/html/glpi
-#     hostname: glpi
-#     ports:
-#       - "80:80"
-#   mongo:
-#     image: mongo
-#     restart: always
-#     ports:
-#       - 27018:27017
-#     environment:
-#       MONGO_INITDB_ROOT_USERNAME: root
-#       MONGO_INITDB_ROOT_PASSWORD: example

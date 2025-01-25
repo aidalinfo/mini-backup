@@ -56,7 +56,7 @@ func BackupKube(kubeConfigPath, backupDir string) error {
 
 	// Sauvegarder l'état dans un fichier JSON
 	backupFile := filepath.Join(backupDir, fmt.Sprintf("k8s-backup-%s.json", time.Now().Format("2006-01-02-15-04-05")))
-	if err := saveToFile(state, backupFile, logger); err != nil {
+	if err := saveToFile(state, backupFile); err != nil {
 		logger.Error(fmt.Sprintf("Failed to save backup file: %v", err))
 		return err
 	}
@@ -144,7 +144,7 @@ func backupClusterResources(ctx context.Context, clientset *kubernetes.Clientset
 	// saveResources(ctx, clientset.StorageV1().StorageClasses().List, "storageclasses", "", state, logger)
 }
 
-func saveToFile(state ClusterState, backupFile string, logger *utils.Logger) error {
+func saveToFile(state ClusterState, backupFile string) error {
 	jsonData, err := json.MarshalIndent(state, "", "    ")
 	if err != nil {
 		return fmt.Errorf("error serializing state to JSON: %w", err)
