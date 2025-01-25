@@ -43,7 +43,7 @@ func backupProcess(path []string, config utils.Backup) error {
 				logger.Error(fmt.Sprintf("Failed to get storage manager: %v", err))
 				continue
 			}
-			s3client.ManageRetention(config.Path.S3, config.Retention.Standard.Days)
+			s3client.ManageRetention(filepath.Join(config.Path.S3, filepath.Base(encryptedPath)), config.Retention.Standard.Days)
 			s3FilePath := filepath.Join(config.Path.S3, filepath.Base(encryptedPath))
 			err = s3client.Upload(encryptedPath, s3FilePath)
 			if err != nil {

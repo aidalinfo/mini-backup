@@ -50,7 +50,7 @@ func CoreRestore(name string, version string) error {
 		}
 		return RestoreFolder(result, backupConfig)
 	case "s3":
-		logger.Info(fmt.Sprintf("Detected S3 restore for %s", name),"[RESTORE] [CORE]")
+		logger.Info(fmt.Sprintf("Detected S3 restore for %s", name), "[RESTORE] [CORE]")
 		result, err := restoreProcess(name, backupConfig, version)
 		if err != nil {
 			logger.Error(fmt.Sprintf("Failed to restore S3 for %s: %v", name, err), "[RESTORE] [CORE]")
@@ -58,7 +58,7 @@ func CoreRestore(name string, version string) error {
 		}
 		return RestoreS3(result, backupConfig, name)
 	case "mongo":
-		logger.Info(fmt.Sprintf("Detected MongoDB restore for %s", name),"[RESTORE] [CORE]")
+		logger.Info(fmt.Sprintf("Detected MongoDB restore for %s", name), "[RESTORE] [CORE]")
 		result, err := restoreProcess(name, backupConfig, version)
 		if err != nil {
 			logger.Error(fmt.Sprintf("Failed to restore MongoDB for %s: %v", name, err), "[RESTORE] [CORE]")
@@ -168,7 +168,13 @@ func restoreProcess(name string, config utils.Backup, version string) (string, e
 	// Décompresser le fichier si nécessaire
 	var finalPath string
 	if strings.HasSuffix(localDecryptedPath, ".gz") && config.Type != "mongo" {
-		finalPath = strings.TrimSuffix(localDecryptedPath, ".tar.gz")
+		// Dans le cas type file ou s3
+		if strings.HasSuffix(localDecryptedPath, ".tar.gz") {
+			finalPath = strings.TrimSuffix(localDecryptedPath, ".tar.gz")
+		} else {
+			finalPath = strings.TrimSuffix(localDecryptedPath, ".gz")
+		}
+
 		output, err := utils.Decompress(localDecryptedPath, finalPath)
 		if err != nil {
 			logger.Error(fmt.Sprintf("Failed to decompress file %s: %v", localDecryptedPath, err), "[RESTORE] [CORE]")
