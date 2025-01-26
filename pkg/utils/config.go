@@ -44,15 +44,21 @@ type Mysql struct {
 }
 
 type Kubernetes struct {
-	KubeConfig string   `yaml:"kubeconfig"`
+	KubeConfig string  `yaml:"kubeconfig"`
+	Cluster    Cluster `yaml:"cluster"`
+	Volumes    Volumes `yaml:"volumes"`
+}
+
+type Cluster struct {
+	Backup   string   `yaml:"backup"`
+	Excludes []string `yaml:"excludes"`
+}
+
+type Volumes struct {
+	Enabled    bool     `yaml:"enabled"`
+	AutoDetect bool     `yaml:"autodetect"`
 	Excludes   []string `yaml:"excludes"`
-	Volumes    struct {
-		Enabled    bool     `yaml:"enabled"`
-		AutoDetect bool     `yaml:"autodetect"`
-		Excludes   []string `yaml:"excludes"`
-		// Add volume backup options
-		BackupPath string `yaml:"backupPath"`
-	} `yaml:"volumes"`
+	BackupPath string   `yaml:"backupPath"`
 }
 
 type Retention struct {
