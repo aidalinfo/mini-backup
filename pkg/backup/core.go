@@ -125,6 +125,16 @@ func CoreBackup(name string) error {
 		backupProcess(resultArray, config.Backups[name])
 		logger.Info(fmt.Sprintf("Successfully backed up MongoDB for %s: %v", name, result))
 		return nil
+	case "kubernetes":
+		logger.Info(fmt.Sprintf("Detected Kubernetes backup for %s", name))
+		result, err := BackupKube(name, config.Backups[name])
+		if err != nil {
+			logger.Error(fmt.Sprintf("Failed to backup Kubernetes for %s: %v", name, err))
+			return err
+		}
+		backupProcess(result, config.Backups[name])
+		logger.Info(fmt.Sprintf("Successfully backed up Kubernetes for %s", name))
+		return nil
 	default:
 		err := fmt.Errorf("unsupported backup type: %s", config.Backups[name].Type)
 		logger.Error(err.Error())

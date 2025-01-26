@@ -14,14 +14,15 @@ type BackupConfig struct {
 }
 
 type Backup struct {
-	Type      string    `yaml:"type"`
-	Folder    []string  `yaml:"folder"`
-	S3        S3config  `yaml:"s3"`
-	Mysql     *Mysql    `yaml:"mysql,omitempty"`
-	Mongo     *Mongo    `yaml:"mongo,omitempty"`
-	Path      Path      `yaml:"path"`
-	Retention Retention `yaml:"retention,omitempty"`
-	Schedule  Schedule  `yaml:"schedule"`
+	Type       string      `yaml:"type"`
+	Folder     []string    `yaml:"folder"`
+	S3         S3config    `yaml:"s3"`
+	Mysql      *Mysql      `yaml:"mysql,omitempty"`
+	Mongo      *Mongo      `yaml:"mongo,omitempty"`
+	Kubernetes *Kubernetes `yaml:"kubernetes,omitempty"` // Ajoutez cette ligne
+	Path       Path        `yaml:"path"`
+	Retention  Retention   `yaml:"retention,omitempty"`
+	Schedule   Schedule    `yaml:"schedule"`
 }
 
 type Mongo struct {
@@ -40,6 +41,18 @@ type Mysql struct {
 	User      string   `yaml:"user,omitempty"`
 	Password  string   `yaml:"password,omitempty"`
 	SSL       string   `yaml:"ssl,omitempty"`
+}
+
+type Kubernetes struct {
+	KubeConfig string   `yaml:"kubeconfig"`
+	Excludes   []string `yaml:"excludes"`
+	Volumes    struct {
+		Enabled    bool     `yaml:"enabled"`
+		AutoDetect bool     `yaml:"autodetect"`
+		Excludes   []string `yaml:"excludes"`
+		// Add volume backup options
+		BackupPath string `yaml:"backupPath"`
+	} `yaml:"volumes"`
 }
 
 type Retention struct {

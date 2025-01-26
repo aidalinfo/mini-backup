@@ -32,21 +32,29 @@ type Resource struct {
 }
 
 var resourceOrder = []string{
+	"persistentvolumes",
+	"persistentvolumeclaims",
 	"configmaps",
 	"secrets",
-	"persistentvolumes", // Add this
-	"persistentvolumeclaims",
 	"services",
 	"deployments",
 	"statefulsets",
 	"daemonsets",
-	"roles",        // Add this
-	"rolebindings", // Add this
+	"roles",
+	"rolebindings",
+	"pods",
 }
 
-func RestoreKube(kubeConfigPath, backupFile string) error {
+func RestoreKube(backupFile string, config utils.Backup) error {
 	logger := utils.LoggerFunc()
 	logger.Info(fmt.Sprintf("Starting Kubernetes restore from file: %s", backupFile))
+
+	// Vérifier la configuration Kubernetes
+	if config.Kubernetes == nil {
+		return fmt.Errorf("kubernetes configuration is missing")
+	}
+
+	kubeConfigPath := config.Kubernetes.KubeConfig
 
 	// Read backup file
 	data, err := os.ReadFile(backupFile)
@@ -99,17 +107,38 @@ func RestoreKube(kubeConfigPath, backupFile string) error {
 
 	// Restore resources in order
 	for _, kind := range resourceOrder {
+		logger.Debug(fmt.Sprintf("Starting restoration of resource type: %s", kind))
 		resources := state.Resources[kind]
+		logger.Debug(fmt.Sprintf("Found %d resources of type %s to restore", len(resources), kind))
+
+		// Vérifier si le GVR existe pour ce type
+		gvr, exists := gvrMap[kind]
+		if !exists {
+			logger.Error(fmt.Sprintf("No GVR mapping found for resource type: %s", kind))
+			continue
+		}
+
 		for _, res := range resources {
+			logger.Debug(fmt.Sprintf("Cleaning and restoring %s: %s/%s", kind, res.Namespace, res.Name))
 			cleanResourceData(res.Data, kind)
-			if err := restoreResource(ctx, dynamicClient, res, gvrMap[kind], logger); err != nil {
-				logger.Error(fmt.Sprintf("Error restoring %s %s/%s: %v", kind, res.Namespace, res.Name, err))
+
+			// Pour les PV, le namespace doit être vide
+			namespace := res.Namespace
+			if kind == "persistentvolumes" {
+				namespace = ""
+				logger.Debug(fmt.Sprintf("Processing PV: %s", res.Name))
+			}
+
+			if err := restoreResource(ctx, dynamicClient, res, gvr, logger); err != nil {
+				logger.Error(fmt.Sprintf("Error restoring %s %s/%s: %v", kind, namespace, res.Name, err))
+				// Log plus de détails sur l'erreur
+				logger.Debug(fmt.Sprintf("Resource data that failed: %+v", res.Data))
 				continue
 			}
 		}
+		logger.Info(fmt.Sprintf("Completed restoration of resource type: %s", kind))
 	}
 
-	logger.Info("Kubernetes restore completed successfully")
 	return nil
 }
 
@@ -131,75 +160,72 @@ func restoreNamespaces(ctx context.Context, clientset *kubernetes.Clientset, nam
 	}
 	return nil
 }
-
 func cleanResourceData(data map[string]interface{}, kind string) {
-	// Clean metadata
 	metadata, ok := data["metadata"].(map[string]interface{})
 	if ok {
-		delete(metadata, "resourceVersion")
+		// Nettoyer les champs générés
 		delete(metadata, "uid")
-		delete(metadata, "creationTimestamp")
+		delete(metadata, "resourceVersion")
 		delete(metadata, "generation")
-		delete(metadata, "selfLink")
+		delete(metadata, "creationTimestamp")
 		delete(metadata, "managedFields")
-		delete(metadata, "ownerReferences")
 		delete(metadata, "finalizers")
 	}
 
-	// Remove status
+	// Supprimer le status
 	delete(data, "status")
 
-	// Clean specific resource types
-	switch kind {
-	case "persistentvolumeclaims":
-		cleanPVCData(data)
-	case "persistentvolumes":
-		cleanPVData(data)
-	case "services":
-		cleanServiceData(data)
-	}
-}
+	if kind == "persistentvolumes" {
+		if spec, ok := data["spec"].(map[string]interface{}); ok {
+			// Nettoyer les attributs CSI spécifiques
+			if csi, hasCsi := spec["csi"].(map[string]interface{}); hasCsi {
+				if attrs, hasAttrs := csi["volumeAttributes"].(map[string]interface{}); hasAttrs {
+					// Supprimer l'identité du provisionneur
+					delete(attrs, "storage.kubernetes.io/csiProvisionerIdentity")
+				}
+			}
 
-func cleanPVCData(data map[string]interface{}) {
-	spec, ok := data["spec"].(map[string]interface{})
-	if !ok {
-		return
-	}
-	delete(spec, "volumeName")
-}
+			// Nettoyer claimRef
+			if claimRef, hasClaimRef := spec["claimRef"].(map[string]interface{}); hasClaimRef {
+				// Garder seulement les informations essentielles
+				delete(claimRef, "uid")
+				delete(claimRef, "resourceVersion")
+			}
 
-func cleanServiceData(data map[string]interface{}) {
-	spec, ok := data["spec"].(map[string]interface{})
-	if !ok {
-		return
+			// S'assurer que la politique de réclamation est Retain
+			spec["persistentVolumeReclaimPolicy"] = "Retain"
+		}
 	}
-	delete(spec, "clusterIP")
-	delete(spec, "clusterIPs")
-}
 
+	logger.Debug(fmt.Sprintf("Cleaned %s data: %+v", kind, data))
+}
 func restoreResource(ctx context.Context, client dynamic.Interface, res Resource, gvr schema.GroupVersionResource, logger *utils.Logger) error {
 	unstructuredObj := &unstructured.Unstructured{
 		Object: res.Data,
 	}
 
-	_, err := client.Resource(gvr).Namespace(res.Namespace).Create(ctx, unstructuredObj, metav1.CreateOptions{})
+	logger.Debug(fmt.Sprintf("Attempting to restore resource: %s/%s of type %s", res.Namespace, res.Name, res.Kind))
+
+	var result *unstructured.Unstructured
+	var err error
+
+	if res.Kind == "persistentvolumes" {
+		// Les PV sont des ressources cluster-wide
+		result, err = client.Resource(gvr).Create(ctx, unstructuredObj, metav1.CreateOptions{})
+	} else {
+		result, err = client.Resource(gvr).Namespace(res.Namespace).Create(ctx, unstructuredObj, metav1.CreateOptions{})
+	}
+
 	if err != nil {
 		if errors.IsAlreadyExists(err) {
 			logger.Info(fmt.Sprintf("Resource %s/%s already exists", res.Kind, res.Name))
 			return nil
 		}
-		return err
+		logger.Debug(fmt.Sprintf("Error details for %s/%s: %v", res.Kind, res.Name, err))
+		return fmt.Errorf("failed to create resource: %w", err)
 	}
 
+	logger.Debug(fmt.Sprintf("Restored resource details: %v", result.Object))
 	logger.Info(fmt.Sprintf("Successfully restored %s %s/%s", res.Kind, res.Namespace, res.Name))
 	return nil
-}
-
-func cleanPVData(data map[string]interface{}) {
-	spec, ok := data["spec"].(map[string]interface{})
-	if !ok {
-		return
-	}
-	// Remove fields that should not be present during creation
-	delete(spec, "claimRef")
 }

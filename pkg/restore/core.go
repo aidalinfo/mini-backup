@@ -66,6 +66,14 @@ func CoreRestore(name string, version string) error {
 		}
 		fmt.Print("Resultat de la restauration: ", result)
 		return RestoreMongoDB(result, backupConfig)
+	case "kubernetes":
+		logger.Info(fmt.Sprintf("Detected Kubernetes restore for %s", name))
+		result, err := restoreProcess(name, backupConfig, version)
+		if err != nil {
+			logger.Error(fmt.Sprintf("Failed to restore Kubernetes for %s: %v", name, err))
+			return err
+		}
+		return RestoreKube(result, backupConfig)
 	default:
 		err := fmt.Errorf("unsupported restore type: %s", backupConfig.Type)
 		logger.Error(err.Error(), "[RESTORE] [CORE]")
@@ -118,10 +126,11 @@ func restoreProcess(name string, config utils.Backup, version string) (string, e
 			logger.Error(fmt.Sprintf("Failed to list backups in S3 path: %v", err), "[RESTORE] [CORE]")
 			return "", err
 		}
+		logger.Debug(fmt.Sprintf("Found files: %v", files))
 
 		// Trouver le dernier fichier
 		for _, file := range files {
-			if strings.HasPrefix(filepath.Base(file), name) && strings.HasSuffix(file, ".enc") {
+			if strings.HasSuffix(file, ".enc") {
 				if targetFile == "" || file > targetFile {
 					targetFile = file
 				}
