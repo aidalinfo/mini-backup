@@ -1,6 +1,7 @@
 package restore
 
 import (
+	"encoding/json"
 	"fmt"
 	"mini-backup/pkg/utils"
 	"os"
@@ -11,11 +12,13 @@ import (
 var logger = utils.LoggerFunc()
 
 // CoreRestore gère la logique de restauration
-func CoreRestore(name string, version string) error {
+func CoreRestore(name string, version string, restoreName string, restoreParams any) error {
 	logger.Info(fmt.Sprintf("Starting restore process for: %s, version: %s", name, version), "[RESTORE] [CORE]")
+
+	// Charger la configuration principale
 	config, err := utils.GetConfig()
 	if err != nil {
-		logger.Error(fmt.Sprintf("Failed to load config: %v", err), "[RESTORE] [CORE]")
+		logger.Error(fmt.Sprintf("Failed to load main config: %v", err), "[RESTORE] [CORE]")
 		return err
 	}
 
@@ -25,6 +28,30 @@ func CoreRestore(name string, version string) error {
 		}
 	}()
 
+	// Identifier la configuration de restauration à utiliser
+	var restoreConfig any
+	if restoreParams != "" {
+		// Si des paramètres de restauration sont fournis directement
+		logger.Info("Using provided restore parameters", "[RESTORE] [CORE]")
+		restoreConfig = restoreParams
+	} else {
+		// Sinon, charger la configuration via restoreName
+		restoresConfig, err := utils.GetRestoreConfig()
+		if err != nil {
+			logger.Error(fmt.Sprintf("Failed to load restore config: %v", err), "[RESTORE] [CORE]")
+			return err
+		}
+
+		var ok bool
+		restoreConfig, ok = restoresConfig.Restores[restoreName]
+		if !ok {
+			err := fmt.Errorf("no restore configuration found for: %s", restoreName)
+			logger.Error(err.Error(), "[RESTORE] [CORE]")
+			return err
+		}
+	}
+	logger.Info(fmt.Sprintf("Restore configuration (final): %+v", restoreConfig), "[RESTORE] [CORE]")
+	// Identifier le type de sauvegarde
 	backupConfig, ok := config.Backups[name]
 	if !ok {
 		err := fmt.Errorf("no backup configuration found for: %s", name)
@@ -32,6 +59,7 @@ func CoreRestore(name string, version string) error {
 		return err
 	}
 
+	// Gestion des types de restauration
 	switch backupConfig.Type {
 	case "mysql":
 		logger.Info(fmt.Sprintf("Detected MySQL restore for %s", name), "[RESTORE] [CORE]")
@@ -64,21 +92,49 @@ func CoreRestore(name string, version string) error {
 			logger.Error(fmt.Sprintf("Failed to restore MongoDB for %s: %v", name, err), "[RESTORE] [CORE]")
 			return err
 		}
-		fmt.Print("Resultat de la restauration: ", result)
 		return RestoreMongoDB(result, backupConfig)
 	case "kubernetes":
-		logger.Info(fmt.Sprintf("Detected Kubernetes restore for %s", name))
+		logger.Info(fmt.Sprintf("Detected Kubernetes restore for %s", name), "[RESTORE] [CORE]")
+		logger.Info(fmt.Sprintf("Restore configuration (raw): %+v", restoreConfig), "[RESTORE] [CORE]")
+
+		restoreConfigMap, ok := restoreConfig.(map[string]interface{})
+		if !ok {
+			return fmt.Errorf("restoreConfig is not a valid map for Kubernetes")
+		}
+
+		// Convertir la map en utils.KubernetesRestore
+		var kubeRestoreConfig utils.KubernetesRestore
+		if err := mapToStruct(restoreConfigMap, &kubeRestoreConfig); err != nil {
+			return fmt.Errorf("failed to convert restoreConfig to KubernetesRestore: %v", err)
+		}
+
+		logger.Info(fmt.Sprintf("Converted Kubernetes restore configuration: %+v", kubeRestoreConfig), "[RESTORE] [CORE]")
+
+		// Effectuer le processus de restauration
 		result, err := restoreProcess(name, backupConfig, version)
 		if err != nil {
-			logger.Error(fmt.Sprintf("Failed to restore Kubernetes for %s: %v", name, err))
+			logger.Error(fmt.Sprintf("Failed to restore Kubernetes for %s: %v", name, err), "[RESTORE] [CORE]")
 			return err
 		}
-		return RestoreKube(result, backupConfig)
+		return RestoreKube(result, backupConfig, kubeRestoreConfig)
+
 	default:
 		err := fmt.Errorf("unsupported restore type: %s", backupConfig.Type)
 		logger.Error(err.Error(), "[RESTORE] [CORE]")
 		return err
 	}
+}
+
+// mapToStruct convertit une map[string]interface{} en une structure donnée.
+func mapToStruct(input map[string]interface{}, output interface{}) error {
+	jsonData, err := json.Marshal(input)
+	if err != nil {
+		return fmt.Errorf("failed to marshal map to JSON: %w", err)
+	}
+	if err := json.Unmarshal(jsonData, output); err != nil {
+		return fmt.Errorf("failed to unmarshal JSON to struct: %w", err)
+	}
+	return nil
 }
 
 // restoreProcess gère le téléchargement, le déchiffrement et la décompression d'un fichier de sauvegarde.

@@ -15,7 +15,7 @@ func RestoreBackup(c *fiber.Ctx) error {
 	logger := utils.LoggerFunc()
 	logger.Info(fmt.Sprintf("RestoreBackup : %s", name), "SOURCE API")
 	// Appeler la fonction de restauration avec le nom
-	err := restore.CoreRestore(name, "last")
+	err := restore.CoreRestore(name, "last", "", "")
 	if err != nil {
 		logger.Error(fmt.Sprintf("Erreur de restauration : %v", err), "SOURCE API")
 		log.Printf("Erreur de restauration : %v", err)
