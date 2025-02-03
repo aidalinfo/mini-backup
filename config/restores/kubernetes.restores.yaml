@@ -1,0 +1,27 @@
+restores:
+  kubernetes:
+    type: "kubernetes"
+    kubeconfig: "/Users/killian/dev/proj-mini-backup/kubeconfig-k8s-par-minnibackup-test.yaml"
+    cluster:
+      provider: "same"   # Options: "same" (même provider cloud) ou "other" (autre cloud provider)
+      ids: "regenerate"  # Options: "same" ou "regenerate"
+      full: true         # Restauration complète de l'état du cluster
+      namespaces:        # Liste des namespaces à restaurer pour l'état du cluster
+        # - name: "default"
+        # - name: "my-app"
+    volumes:
+      full: true         # Restaurer tous les volumes (true) ou certains uniquement (false)
+      namespaces:        # Liste des namespaces pour la restauration des volumes
+        # - name: "default"
+        # - name: "my-app"
+          # volumes:       # Liste des volumes spécifiques à restaurer dans ce namespace
+          #   - "volume1"
+          #   - "volume2"
+  volumes_only:
+    type: "kubernetes"
+    kubeconfig: "/Users/killian/dev/proj-mini-backup/kubeconfig-k8s-preview-upgrade-aidalinfo.yaml"
+    volumes:
+      full: false
+      pvcs: 
+        - "e3cd135e-1c2e-43fb-b1e8-e0998f10612c"
+      

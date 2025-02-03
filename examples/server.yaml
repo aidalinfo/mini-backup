@@ -4,15 +4,10 @@ server:
   log: "./logs/server.log"
 
 rstorage:
-  scaleway:
-    endpoint: ""
-    bucket_name: ""
-    access_key: "${{ACCESS_KEY}}"
-    secret_key: "${{SECRET_KEY}}"
-    region: ""
-  ovh:
-    endpoint: ""
-    bucket_name: ""
-    access_key: "${{ACCESS_KEY}}"
-    secret_key: "${{SECRET_KEY}}"
-    region: ""
+rstorage:
+  minio:
+    endpoint: "http://minio:9000"
+    bucket_name: "backup"
+    access_key: "${{MINIO_ACCESS_KEY}}"
+    secret_key: "${{MINIO_SECRET_KEY}}"
+    region: "fr-par"

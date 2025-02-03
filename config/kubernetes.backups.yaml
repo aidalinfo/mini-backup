@@ -1,0 +1,32 @@
+backups:
+  previewkube:
+    type: kubernetes
+    kubernetes:
+      kubeconfig: "/Users/killian/dev/proj-mini-backup/kubeconfig-k8s-preview-upgrade-aidalinfo.yaml"
+      # kubeconfig: "/Users/killian/dev/proj-mini-backup/kubeconfig-k8s-par-minnibackup-test.yaml"
+      cluster:
+        backup: "auto"
+        excludes:
+          - kube-system
+          - ingress-nginx
+          - cert-manager
+          - kube-node-lease
+          - kube-public
+      volumes:
+        enabled: true
+        autodetect: true
+        excludes: 
+          - default
+          - couchdb
+          - crowdsec
+          # - glpi-demo
+    path:
+      local: "./backups"
+      s3: "backup/kubernetes/"
+    retention:
+      standard: 
+        days: 14
+      glacier:
+        days: 365
+    schedule:
+      standard: "30 * * * *"
