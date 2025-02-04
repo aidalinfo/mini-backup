@@ -52,9 +52,9 @@ func backupProcess(path []string, config utils.Backup) error {
 			}
 			logger.Info(fmt.Sprintf("Successfully uploaded %s to %s", encryptedPath, configServer.BucketName))
 		}
-		deleteFile(p)
-		deleteFile(compressed)
-		deleteFile(encryptedPath)
+		// deleteFile(p)
+		// deleteFile(compressed)
+		// deleteFile(encryptedPath)
 	}
 	fmt.Println(compressedPath)
 	return nil
@@ -124,6 +124,17 @@ func CoreBackup(name string) error {
 		resultArray := []string{result}
 		backupProcess(resultArray, config.Backups[name])
 		logger.Info(fmt.Sprintf("Successfully backed up MongoDB for %s: %v", name, result))
+		return nil
+	case "sqlite":
+		logger.Info(fmt.Sprintf("Detected SQLite backup for %s", name))
+		result, err := BackupSqlite(name, config.Backups[name])
+		if err != nil {
+			logger.Error(fmt.Sprintf("Failed to backup SQLite for %s: %v", name, err))
+			return err
+		}
+		resultArray := []string{result}
+		backupProcess(resultArray, config.Backups[name])
+		logger.Info(fmt.Sprintf("Successfully backed up SQLite for %s: %v", name, result))
 		return nil
 	case "kubernetes":
 		logger.Info(fmt.Sprintf("Detected Kubernetes backup for %s", name))

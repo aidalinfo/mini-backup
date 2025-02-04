@@ -30,26 +30,26 @@ func CoreRestore(name string, version string, restoreName string, restoreParams 
 
 	// Identifier la configuration de restauration à utiliser
 	var restoreConfig any
-	if restoreParams != "" {
-		// Si des paramètres de restauration sont fournis directement
-		logger.Info("Using provided restore parameters", "[RESTORE] [CORE]")
-		restoreConfig = restoreParams
-	} else {
-		// Sinon, charger la configuration via restoreName
-		restoresConfig, err := utils.GetRestoreConfig()
-		if err != nil {
-			logger.Error(fmt.Sprintf("Failed to load restore config: %v", err), "[RESTORE] [CORE]")
-			return err
-		}
+	// if restoreParams != "" {
+	// 	// Si des paramètres de restauration sont fournis directement
+	// 	logger.Info("Using provided restore parameters", "[RESTORE] [CORE]")
+	// 	restoreConfig = restoreParams
+	// } else {
+	// 	// Sinon, charger la configuration via restoreName
+	// 	restoresConfig, err := utils.GetRestoreConfig()
+	// 	if err != nil {
+	// 		logger.Error(fmt.Sprintf("Failed to load restore config: %v", err), "[RESTORE] [CORE]")
+	// 		return err
+	// 	}
 
-		var ok bool
-		restoreConfig, ok = restoresConfig.Restores[restoreName]
-		if !ok {
-			err := fmt.Errorf("no restore configuration found for: %s", restoreName)
-			logger.Error(err.Error(), "[RESTORE] [CORE]")
-			return err
-		}
-	}
+	// 	var ok bool
+	// 	restoreConfig, ok = restoresConfig.Restores[restoreName]
+	// 	if !ok {
+	// 		err := fmt.Errorf("no restore configuration found for: %s", restoreName)
+	// 		logger.Error(err.Error(), "[RESTORE] [CORE]")
+	// 		return err
+	// 	}
+	// }
 	logger.Info(fmt.Sprintf("Restore configuration (final): %+v", restoreConfig), "[RESTORE] [CORE]")
 	// Identifier le type de sauvegarde
 	backupConfig, ok := config.Backups[name]
@@ -118,6 +118,14 @@ func CoreRestore(name string, version string, restoreName string, restoreParams 
 		}
 		return RestoreKube(result, backupConfig, kubeRestoreConfig)
 
+	case "sqlite":
+		logger.Info("Restoring sqlite database", "[RESTORE] [CORE]")
+		result, err := restoreProcess(name, backupConfig, version)
+		if err != nil {
+			logger.Error(fmt.Sprintf("Failed to restore sqlite for %s: %v", name, err), "[RESTORE] [CORE]")
+			return err
+		}
+		return RestoreSqlite(name, backupConfig, result)
 	default:
 		err := fmt.Errorf("unsupported restore type: %s", backupConfig.Type)
 		logger.Error(err.Error(), "[RESTORE] [CORE]")

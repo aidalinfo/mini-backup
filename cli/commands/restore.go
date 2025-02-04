@@ -92,7 +92,7 @@ func NewRestoreCommand() *cobra.Command {
 			}
 
 			// Appeler CoreRestore avec la version sélectionnée ou "last"
-			err := restore.CoreRestore(name, version)
+			err := restore.CoreRestore(name, version, "", "")
 			if err != nil {
 				fmt.Printf("Erreur lors de la restauration : %v\n", err)
 			} else {

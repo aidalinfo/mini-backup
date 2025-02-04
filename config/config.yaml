@@ -16,6 +16,22 @@ backups:
         days: 14
     schedule:
       standard: "*/2 * * * *"
+  sqlite:
+    type: sqlite
+    sqlite:
+      paths: 
+        - "./datatest/sqlite.db"
+      credentials:
+        user: "root"
+        password: "example"
+    path:
+      local: "./backups"
+      s3: "backup/minio-data"
+    retention:
+      standard:
+        days: 14
+    schedule:
+      standard: "*/59 * * * *"   
   # glpi:
   #   type: mysql
   #   mysql: 

@@ -19,6 +19,7 @@ type Backup struct {
 	S3         S3config    `yaml:"s3"`
 	Mysql      *Mysql      `yaml:"mysql,omitempty"`
 	Mongo      *Mongo      `yaml:"mongo,omitempty"`
+	Sqlite     *Sqlite     `yaml:"sqlite,omitempty"`
 	Kubernetes *Kubernetes `yaml:"kubernetes,omitempty"` // Ajoutez cette ligne
 	Path       Path        `yaml:"path"`
 	Retention  Retention   `yaml:"retention,omitempty"`
@@ -86,6 +87,14 @@ type S3config struct {
 	Region     string   `yaml:"region"`
 	ACCESS_KEY string   `yaml:"ACCESS_KEY"`
 	SECRET_KEY string   `yaml:"SECRET_KEY"`
+}
+
+type Sqlite struct {
+	Paths []string `yaml:"paths"`
+	credentials struct {
+		user     string `yaml:"user"`
+		password string `yaml:"password"`
+	}
 }
 
 // LoadConfig loads configuration from a YAML file.
