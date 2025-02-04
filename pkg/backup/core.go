@@ -52,9 +52,9 @@ func backupProcess(path []string, config utils.Backup) error {
 			}
 			logger.Info(fmt.Sprintf("Successfully uploaded %s to %s", encryptedPath, configServer.BucketName))
 		}
-		// deleteFile(p)
-		// deleteFile(compressed)
-		// deleteFile(encryptedPath)
+		deleteFile(p)
+		deleteFile(compressed)
+		deleteFile(encryptedPath)
 	}
 	fmt.Println(compressedPath)
 	return nil
