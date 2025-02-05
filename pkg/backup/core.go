@@ -9,7 +9,7 @@ import (
 
 var logger = utils.LoggerFunc()
 
-func backupProcess(path []string, config utils.Backup) error {
+func backupProcess(path []string, config utils.Backup, backupName string) error {
 	compressedPath := []string{}
 	for _, p := range path {
 		var compressed string
@@ -57,6 +57,7 @@ func backupProcess(path []string, config utils.Backup) error {
 		deleteFile(encryptedPath)
 	}
 	fmt.Println(compressedPath)
+	logger.Info(fmt.Sprintf("[TRACING] : Backup OK : %s ", backupName), "BACKUP PROCESS")
 	return nil
 }
 
@@ -91,7 +92,7 @@ func CoreBackup(name string) error {
 			return err
 		}
 		logger.Info(fmt.Sprintf("Successfully backed up MySQL for %s: %v", name, result))
-		backupProcess(result, config.Backups[name])
+		backupProcess(result, config.Backups[name], name)
 		return nil
 	case "folder":
 		logger.Info(fmt.Sprintf("Detected folder backup for %s", name))
@@ -101,7 +102,7 @@ func CoreBackup(name string) error {
 			return err
 		}
 		logger.Debug(fmt.Sprintln("Resultat de la copie de dossier:", result))
-		backupProcess(result, config.Backups[name])
+		backupProcess(result, config.Backups[name], name)
 		logger.Info(fmt.Sprintf("Successfully backed up folder for %s", name))
 		return nil
 	case "s3":
@@ -111,7 +112,7 @@ func CoreBackup(name string) error {
 			logger.Error(fmt.Sprintf("Failed to backup S3 for %s: %v", name, err))
 			return err
 		}
-		backupProcess(result, config.Backups[name])
+		backupProcess(result, config.Backups[name], name)
 		logger.Info(fmt.Sprintf("Successfully backed up S3 for %s: %v", name, result))
 		return nil
 	case "mongo":
@@ -122,7 +123,7 @@ func CoreBackup(name string) error {
 			return err
 		}
 		resultArray := []string{result}
-		backupProcess(resultArray, config.Backups[name])
+		backupProcess(resultArray, config.Backups[name], name)
 		logger.Info(fmt.Sprintf("Successfully backed up MongoDB for %s: %v", name, result))
 		return nil
 	case "sqlite":
@@ -133,7 +134,7 @@ func CoreBackup(name string) error {
 			return err
 		}
 		resultArray := []string{result}
-		backupProcess(resultArray, config.Backups[name])
+		backupProcess(resultArray, config.Backups[name], name)
 		logger.Info(fmt.Sprintf("Successfully backed up SQLite for %s: %v", name, result))
 		return nil
 	case "kubernetes":
@@ -143,7 +144,7 @@ func CoreBackup(name string) error {
 			logger.Error(fmt.Sprintf("Failed to backup Kubernetes for %s: %v", name, err))
 			return err
 		}
-		backupProcess(result, config.Backups[name])
+		backupProcess(result, config.Backups[name], name)
 		logger.Info(fmt.Sprintf("Successfully backed up Kubernetes for %s", name))
 		return nil
 	default:

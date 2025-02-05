@@ -23,4 +23,6 @@ func SetupRoutes(app *fiber.App) {
 	api.Get("/server/config", handlers.GetConfigServer)
 
 	api.Get("/server/backups/list", handlers.ListFilesForAllBackup)
+	api.Get("/backups/last-logs", handlers.LastBackupsFromLogs)
+
 }
