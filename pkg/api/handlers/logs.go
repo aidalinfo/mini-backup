@@ -19,6 +19,7 @@ type BackupLogEntry struct {
 
 // LastBackupsFromLogs lit les logs et renvoie les 5 derniers backups "OK".
 func LastBackupsFromLogs(c *fiber.Ctx) error {
+	fmt.Println("GET /backups/last-logs")
 	// 1. Déterminer le chemin du fichier de log depuis ta config ou en dur
 	logFilePath := "logs/mini-backup.log"
 

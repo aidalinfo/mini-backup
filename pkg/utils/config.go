@@ -20,7 +20,7 @@ type Backup struct {
 	Mysql      *Mysql      `yaml:"mysql,omitempty"`
 	Mongo      *Mongo      `yaml:"mongo,omitempty"`
 	Sqlite     *Sqlite     `yaml:"sqlite,omitempty"`
-	Kubernetes *Kubernetes `yaml:"kubernetes,omitempty"` // Ajoutez cette ligne
+	Kubernetes *Kubernetes `yaml:"kubernetes,omitempty"`
 	Path       Path        `yaml:"path"`
 	Retention  Retention   `yaml:"retention,omitempty"`
 	Schedule   Schedule    `yaml:"schedule"`
@@ -148,7 +148,7 @@ func GetConfig() (*BackupConfig, error) {
 		}
 	}
 
-	// Parcourir chaque fichier pour trouver les .backups.yaml/.backups.yml afin de créer mongo.backups.yml
+	// Parcourir chaque fichier pour trouver les .backups.yaml/.backups.yml afin de créer un objet BackupConfig
 	for _, file := range files {
 		if !file.IsDir() && (strings.HasSuffix(file.Name(), ".backups.yaml") || strings.HasSuffix(file.Name(), ".backups.yml")) {
 			configPath := filepath.Join(configDir, file.Name())

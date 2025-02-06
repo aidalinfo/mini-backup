@@ -21,3 +21,22 @@ func GetConfigServer(c *fiber.Ctx) error {
 		"server": config,
 	})
 }
+
+// GetRStorageCount retourne le nombre de configurations RStorage
+func GetRStorageCount(c *fiber.Ctx) error {
+	// Charger la configuration serveur
+	config, err := utils.GetConfigServer()
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Failed to load server configuration: " + err.Error(),
+		})
+	}
+
+	// Compter les entrées RStorage
+	count := len(config.RStorage)
+
+	// Retourner la réponse
+	return c.JSON(fiber.Map{
+		"rstorage_count": count,
+	})
+}
