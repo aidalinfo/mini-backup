@@ -15,7 +15,7 @@ backups:
       standard:
         days: 14
     schedule:
-      standard: "*/2 * * * *"
+      standard: "*/20 * * * *"
   sqlite:
     type: sqlite
     sqlite:

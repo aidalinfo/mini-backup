@@ -137,7 +137,6 @@ func (m *S3Manager) ListBackupsApi(prefix string) ([]BackupDetails, error) {
 	if prefix != "" {
 		input.Prefix = &prefix
 	}
-	size := int64(0)
 	result, err := m.Client.ListObjectsV2(context.TODO(), input)
 	if err != nil {
 		logger.Error(fmt.Sprintf("Erreur lors de la liste des objets avec le préfixe '%s': %v", prefix, err))
@@ -148,7 +147,7 @@ func (m *S3Manager) ListBackupsApi(prefix string) ([]BackupDetails, error) {
 	for _, item := range result.Contents {
 		backups = append(backups, BackupDetails{
 			Key:          *item.Key,
-			Size:         size,
+			Size:         *item.Size,
 			LastModified: *item.LastModified,
 		})
 	}

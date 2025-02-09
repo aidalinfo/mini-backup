@@ -12,8 +12,8 @@ import (
 var logger = utils.LoggerFunc()
 
 // CoreRestore gère la logique de restauration
-func CoreRestore(name string, version string, restoreName string, restoreParams any) error {
-	logger.Info(fmt.Sprintf("Starting restore process for: %s, version: %s", name, version), "[RESTORE] [CORE]")
+func CoreRestore(name string, backupFile string, restoreName string, restoreParams any) error {
+	logger.Info(fmt.Sprintf("Starting restore process for: %s, backupFile: %s", name, backupFile), "[RESTORE] [CORE]")
 
 	// Charger la configuration principale
 	config, err := utils.GetConfig()
@@ -63,7 +63,7 @@ func CoreRestore(name string, version string, restoreName string, restoreParams 
 	switch backupConfig.Type {
 	case "mysql":
 		logger.Info(fmt.Sprintf("Detected MySQL restore for %s", name), "[RESTORE] [CORE]")
-		result, err := restoreProcess(name, backupConfig, version)
+		result, err := restoreProcess(name, backupConfig, backupFile)
 		if err != nil {
 			logger.Error(fmt.Sprintf("Failed to restore MySQL for %s: %v", name, err), "[RESTORE] [CORE]")
 			return err
@@ -71,7 +71,7 @@ func CoreRestore(name string, version string, restoreName string, restoreParams 
 		return RestoreMySQL(result, backupConfig)
 	case "folder":
 		logger.Info(fmt.Sprintf("Detected folder restore for %s", name), "[RESTORE] [CORE]")
-		result, err := restoreProcess(name, backupConfig, version)
+		result, err := restoreProcess(name, backupConfig, backupFile)
 		if err != nil {
 			logger.Error(fmt.Sprintf("Failed to restore folder for %s: %v", name, err), "[RESTORE] [CORE]")
 			return err
@@ -79,7 +79,7 @@ func CoreRestore(name string, version string, restoreName string, restoreParams 
 		return RestoreFolder(result, backupConfig)
 	case "s3":
 		logger.Info(fmt.Sprintf("Detected S3 restore for %s", name), "[RESTORE] [CORE]")
-		result, err := restoreProcess(name, backupConfig, version)
+		result, err := restoreProcess(name, backupConfig, backupFile)
 		if err != nil {
 			logger.Error(fmt.Sprintf("Failed to restore S3 for %s: %v", name, err), "[RESTORE] [CORE]")
 			return err
@@ -87,7 +87,7 @@ func CoreRestore(name string, version string, restoreName string, restoreParams 
 		return RestoreS3(result, backupConfig, name)
 	case "mongo":
 		logger.Info(fmt.Sprintf("Detected MongoDB restore for %s", name), "[RESTORE] [CORE]")
-		result, err := restoreProcess(name, backupConfig, version)
+		result, err := restoreProcess(name, backupConfig, backupFile)
 		if err != nil {
 			logger.Error(fmt.Sprintf("Failed to restore MongoDB for %s: %v", name, err), "[RESTORE] [CORE]")
 			return err
@@ -111,7 +111,7 @@ func CoreRestore(name string, version string, restoreName string, restoreParams 
 		logger.Info(fmt.Sprintf("Converted Kubernetes restore configuration: %+v", kubeRestoreConfig), "[RESTORE] [CORE]")
 
 		// Effectuer le processus de restauration
-		result, err := restoreProcess(name, backupConfig, version)
+		result, err := restoreProcess(name, backupConfig, backupFile)
 		if err != nil {
 			logger.Error(fmt.Sprintf("Failed to restore Kubernetes for %s: %v", name, err), "[RESTORE] [CORE]")
 			return err
@@ -120,7 +120,7 @@ func CoreRestore(name string, version string, restoreName string, restoreParams 
 
 	case "sqlite":
 		logger.Info("Restoring sqlite database", "[RESTORE] [CORE]")
-		result, err := restoreProcess(name, backupConfig, version)
+		result, err := restoreProcess(name, backupConfig, backupFile)
 		if err != nil {
 			logger.Error(fmt.Sprintf("Failed to restore sqlite for %s: %v", name, err), "[RESTORE] [CORE]")
 			return err
@@ -146,9 +146,9 @@ func mapToStruct(input map[string]interface{}, output interface{}) error {
 }
 
 // restoreProcess gère le téléchargement, le déchiffrement et la décompression d'un fichier de sauvegarde.
-func restoreProcess(name string, config utils.Backup, version string) (string, error) {
+func restoreProcess(name string, config utils.Backup, backupFile string) (string, error) {
 	logger := utils.LoggerFunc()
-	logger.Info(fmt.Sprintf("Starting restore process for: %s, version: %s", name, version), "[RESTORE] [CORE]")
+	logger.Info(fmt.Sprintf("Starting restore process for: %s, backupFile: %s", name, backupFile), "[RESTORE] [CORE]")
 
 	// Charger la configuration du serveur
 	configServer, err := utils.GetConfigServer()
@@ -182,7 +182,7 @@ func restoreProcess(name string, config utils.Backup, version string) (string, e
 
 	var targetFile string
 
-	if version == "last" {
+	if backupFile == "last" {
 		// Télécharger le dernier fichier depuis S3
 		logger.Info(fmt.Sprintf("Searching for latest backup in: %s", config.Path.S3), "[RESTORE] [CORE]")
 		files, err := s3client.ListBackups(config.Path.S3)
@@ -209,9 +209,9 @@ func restoreProcess(name string, config utils.Backup, version string) (string, e
 
 		logger.Info(fmt.Sprintf("Found latest backup: %s", targetFile))
 	} else {
-		// Utiliser la version spécifiée
-		logger.Info(fmt.Sprintf("Using specified backup version: %s", version))
-		targetFile = filepath.Join(config.Path.S3, version)
+		// Utiliser la backupFile spécifiée
+		logger.Info(fmt.Sprintf("Using specified backup backupFile: %s", backupFile))
+		targetFile = backupFile
 	}
 
 	// Télécharger le fichier chiffré

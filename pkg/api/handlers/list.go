@@ -43,7 +43,7 @@ func ListFilesForBackup(c *fiber.Ctx) error {
 	// Récupérer le nom du backup depuis les paramètres de route
 	name := c.Params("name")
 
-	// Charger la configuration
+	// Charger la configuration des backups
 	config, err := utils.GetConfig()
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
@@ -74,7 +74,7 @@ func ListFilesForBackup(c *fiber.Ctx) error {
 		})
 	}
 
-	// Obtenir le premier élément de RStorage
+	// Obtenir la première configuration de stockage disponible
 	var firstStorageName string
 	var firstStorageConfig utils.RStorageConfig
 	for name, config := range configServer.RStorage {
@@ -83,7 +83,7 @@ func ListFilesForBackup(c *fiber.Ctx) error {
 		break
 	}
 
-	// Initialiser le client S3 avec le premier storage
+	// Initialiser le client S3
 	s3client, err := utils.RstorageManager(firstStorageName, &firstStorageConfig)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
@@ -91,20 +91,21 @@ func ListFilesForBackup(c *fiber.Ctx) error {
 		})
 	}
 
-	// Lister les fichiers pour le chemin S3 du backup
-	files, err := s3client.ListBackups(backupConfig.Path.S3)
+	// Utiliser ListBackupsApi pour obtenir les détails des fichiers stockés
+	backups, err := s3client.ListBackupsApi(backupConfig.Path.S3)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": fmt.Sprintf("Failed to list backups for '%s': %v", name, err),
 		})
 	}
 
-	// Retourner la liste des fichiers
+	// Retourner la liste complète avec détails
 	return c.JSON(fiber.Map{
 		"backup": name,
-		"files":  files,
+		"files":  backups, // Contient {Key, Size, LastModified} pour chaque fichier
 	})
 }
+
 func ListFilesForAllBackup(c *fiber.Ctx) error {
 	logger := utils.LoggerFunc()
 
