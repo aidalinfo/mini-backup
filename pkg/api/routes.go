@@ -10,7 +10,7 @@ import (
 func SetupRoutes(app *fiber.App) {
 	api := app.Group("/api")
 	// Route pour récupérer la configuration d'un backup
-	api.Get("/backup", handlers.GetBackupConfig)
+	// api.Get("/backup", handlers.GetBackupConfig)
 	// Route pour lister les backups
 	api.Get("/backups", handlers.ListBackups)
 	// Route pour obtenir les backups détaillés

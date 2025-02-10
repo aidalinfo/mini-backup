@@ -1,7 +1,7 @@
 server:
   port: 8086
   debug: true
-  log: "./logs/server.log"
+  # log: "./logs/server.log"
 
 # secret_manager:
 #   infisical:
@@ -17,3 +17,4 @@ rstorage:
     access_key: "minioadmin"
     secret_key: "miniopassword"
     region: "fr-par"
+    pathStyle: true

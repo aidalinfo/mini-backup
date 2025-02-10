@@ -17,7 +17,7 @@ func BackupRemoteS3(name string, config utils.Backup) ([]string, error) {
 	allBucketPath := []string{}
 	for _, bucket := range config.S3.Bucket {
 		logger.Debug(fmt.Sprintf("Backup du bucket S3 : %s", bucket))
-		s3client, err := utils.NewS3Manager(bucket, config.S3.Region, config.S3.Endpoint, name)
+		s3client, err := utils.NewS3Manager(bucket, config.S3.Region, config.S3.Endpoint, name, config.S3.PathStyle)
 		if err != nil {
 			logger.Error(fmt.Sprintf("Erreur lors de l'initialisation du gestionnaire S3 : %v\n", err))
 			continue

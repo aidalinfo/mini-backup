@@ -22,7 +22,7 @@ func backupProcess(path []string, config utils.Backup, backupName string) error 
 			cp, err := utils.Compress(p)
 			if err != nil {
 				logger.Error(fmt.Sprintf("Failed to compress %s: %v", path, err))
-				continue
+				return err
 			}
 			logger.Info(fmt.Sprintf("Successfully compressed %s", path))
 			compressed = cp
@@ -35,7 +35,7 @@ func backupProcess(path []string, config utils.Backup, backupName string) error 
 		configServer, err := utils.GetConfigServer()
 		if err != nil {
 			logger.Error(fmt.Sprintf("Failed to get config server: %v", err))
-			continue
+			return err
 		}
 		for name, configServer := range configServer.RStorage {
 			s3client, err := utils.RstorageManager(name, &configServer)

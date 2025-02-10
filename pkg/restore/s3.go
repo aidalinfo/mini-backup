@@ -1,10 +1,10 @@
 package restore
 
 import (
-    "fmt"
-    "mini-backup/pkg/utils"
-    "os"
-    "path/filepath"
+	"fmt"
+	"mini-backup/pkg/utils"
+	"os"
+	"path/filepath"
 )
 
 func RestoreS3(backupPath string, config utils.Backup, name string) error {
@@ -22,6 +22,7 @@ func RestoreS3(backupPath string, config utils.Backup, name string) error {
         config.S3.Region,
         config.S3.Endpoint,
         name,
+        config.S3.PathStyle,
     )
     if err != nil {
         logger.Error(fmt.Sprintf("Erreur lors de l'initialisation du gestionnaire S3 : %v\n", err), "[RESTORE] [S3]")
