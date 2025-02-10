@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -152,7 +153,7 @@ func (m *S3Manager) ListBackupsApi(prefix string) ([]BackupDetails, error) {
 		})
 	}
 
-	logger.Info(fmt.Sprintf("Liste des backups détaillée (préfixe: '%s'): %v", prefix, backups))
+	logger.Debug(fmt.Sprintf("Liste des backups détaillée (préfixe: '%s'): %v", prefix, backups),"[UTILS] [S3MANAGER]")
 	return backups, nil
 }
 
@@ -368,6 +369,61 @@ func RstorageManager(name string, config *RStorageConfig) (*S3Manager, error) {
 	logger.Info("S3Manager initialized")
 	return s3Manager, nil
 }
+
+// DownloadAndDecrypt télécharge un fichier chiffré depuis S3, le déchiffre et retourne son contenu en mémoire
+func (m *S3Manager) DownloadAndDecrypt(s3Path string) ([]byte, error) {
+	// Préparer la requête pour obtenir l'objet
+	getInput := &s3.GetObjectInput{
+		Bucket: &m.Bucket,
+		Key:    &s3Path,
+	}
+
+	// Récupérer l'objet S3
+	objectOutput, err := m.Client.GetObject(context.TODO(), getInput)
+	if err != nil {
+		logger.Error(fmt.Sprintf("Erreur lors du téléchargement de %s depuis S3 : %v", s3Path, err))
+		return nil, fmt.Errorf("erreur lors du téléchargement de %s : %v", s3Path, err)
+	}
+	defer objectOutput.Body.Close()
+
+	// Lire le contenu du fichier téléchargé
+	var encryptedData bytes.Buffer
+	_, err = io.Copy(&encryptedData, objectOutput.Body)
+	if err != nil {
+		logger.Error(fmt.Sprintf("Erreur lors de la lecture des données chiffrées de %s : %v", s3Path, err))
+		return nil, fmt.Errorf("erreur lors de la lecture du fichier chiffré : %v", err)
+	}
+
+	// Déchiffrer le fichier en mémoire
+	decryptedData, err := DecryptBytes(encryptedData.Bytes())
+	if err != nil {
+		logger.Error(fmt.Sprintf("Erreur lors du déchiffrement de %s : %v", s3Path, err))
+		return nil, fmt.Errorf("erreur lors du déchiffrement : %v", err)
+	}
+
+	logger.Info(fmt.Sprintf("Fichier %s téléchargé et déchiffré avec succès", s3Path))
+	return decryptedData, nil
+}
+
+// GeneratePresignedURL génère une URL signée pour le téléchargement d'un fichier S3
+func (m *S3Manager) GeneratePresignedURL(s3Path string, expiration time.Duration) (string, error) {
+	presignClient := s3.NewPresignClient(m.Client)
+
+	req, err := presignClient.PresignGetObject(context.TODO(), &s3.GetObjectInput{
+		Bucket: aws.String(m.Bucket),
+		Key:    aws.String(s3Path),
+	}, s3.WithPresignExpires(expiration))
+
+	if err != nil {
+		logger.Error(fmt.Sprintf("Erreur lors de la génération de l'URL signée pour %s : %v", s3Path, err))
+		return "", fmt.Errorf("erreur lors de la génération de l'URL signée : %v", err)
+	}
+
+	logger.Info(fmt.Sprintf("URL signée générée avec succès pour %s", s3Path))
+	return req.URL, nil
+}
+
+
 
 func ManagerStorageFunc() (*S3Manager, error) {
 	// Appeler server config

@@ -19,7 +19,7 @@ func SetupRoutes(app *fiber.App) {
 	// Route pour lister les fichiers d'un backup
 	api.Get("/backups/:name/files", handlers.ListFilesForBackup)
 	// api.Get("/backups/:name/list", handlers.ListBackupDetails)
-
+	api.Get("/download/:file", handlers.DownloadBackup)
 	api.Get("/server/config", handlers.GetConfigServer)
 
 	api.Get("/server/backups/list", handlers.ListFilesForAllBackup)

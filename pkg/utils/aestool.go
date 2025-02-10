@@ -123,3 +123,42 @@ func DecryptFile(inputFile, outputFile string) error {
 
 	return nil
 }
+// DecryptBytes déchiffre des données AES-GCM en mémoire
+func DecryptBytes(encryptedData []byte) ([]byte, error) {
+	key, err := readKeyFromFile()
+	if err != nil {
+		return nil, err
+	}
+
+	logger.Info(fmt.Sprintf("🔐 Début du déchiffrement - Taille chiffrée : %d octets", len(encryptedData)))
+
+	nonceSize := 12
+	if len(encryptedData) < nonceSize {
+		logger.Error("❌ Données chiffrées trop courtes pour être valides !")
+		return nil, errors.New("données chiffrées trop courtes")
+	}
+
+	nonce, cipherText := encryptedData[:nonceSize], encryptedData[nonceSize:]
+
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		logger.Error(fmt.Sprintf("❌ Erreur lors de la création du bloc AES : %v", err))
+		return nil, fmt.Errorf("erreur lors de la création du bloc AES : %v", err)
+	}
+
+	aesGCM, err := cipher.NewGCM(block)
+	if err != nil {
+		logger.Error(fmt.Sprintf("❌ Erreur lors de la création de GCM : %v", err))
+		return nil, fmt.Errorf("erreur lors de la création de GCM : %v", err)
+	}
+
+	plainText, err := aesGCM.Open(nil, nonce, cipherText, nil)
+	if err != nil {
+		logger.Error(fmt.Sprintf("❌ Erreur lors du déchiffrement : %v", err))
+		return nil, fmt.Errorf("erreur lors du déchiffrement : %v", err)
+	}
+
+	logger.Info(fmt.Sprintf("🔓 Déchiffrement réussi ! Taille du fichier déchiffré : %d octets", len(plainText)))
+
+	return plainText, nil
+}
