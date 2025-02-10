@@ -2,8 +2,7 @@ backups:
   minio-data:
     type: s3
     s3:
-      bucket:
-        - data
+      all: true
       endpoint: "http://localhost:9002"
       region: "fr-par"
       ACCESS_KEY: "minioadmin"
@@ -16,7 +15,7 @@ backups:
       standard:
         days: 14
     schedule:
-      standard: "*/20 * * * *"
+      standard: "*/2 * * * *"
   sqlite:
     type: sqlite
     sqlite:

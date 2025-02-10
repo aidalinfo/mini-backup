@@ -3,6 +3,7 @@ package utils
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"time"
@@ -14,6 +15,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 )
 
 func Int64Ptr(i int64) *int64 {
@@ -440,4 +442,58 @@ func (m *S3Manager) GeneratePresignedURL(s3Path string, expiration time.Duration
 
 	getLogger().Info(fmt.Sprintf("URL signée générée avec succès pour %s", s3Path))
 	return req.URL, nil
+}
+
+// DoesBucketExist vérifie si un bucket S3 existe
+func (m *S3Manager) DoesBucketExist(bucketName string) (bool, error) {
+	_, err := m.Client.HeadBucket(context.TODO(), &s3.HeadBucketInput{
+		Bucket: &bucketName,
+	})
+	if err != nil {
+		var notFoundErr *types.NotFound
+		if errors.As(err, &notFoundErr) {
+			return false, nil // Le bucket n'existe pas
+		}
+		return false, err // Autre erreur
+	}
+	return true, nil // Le bucket existe
+}
+
+// CreateBucket crée un bucket S3 s'il n'existe pas déjà
+func (m *S3Manager) CreateBucket(bucketName string) error {
+	// Préparer l'entrée pour créer un bucket
+	input := &s3.CreateBucketInput{
+		Bucket: &bucketName,
+	}
+
+	// Création du bucket
+	_, err := m.Client.CreateBucket(context.TODO(), input)
+	if err != nil {
+		return fmt.Errorf("erreur lors de la création du bucket %s : %v", bucketName, err)
+	}
+
+	getLogger().Info(fmt.Sprintf("Bucket %s créé avec succès.", bucketName))
+	return nil
+}
+
+// UploadEmptyFolder crée un "dossier" vide dans S3
+func (m *S3Manager) UploadEmptyFolder(folderPath string) error {
+	// Ajouter "/" à la fin pour indiquer un dossier
+	if !strings.HasSuffix(folderPath, "/") {
+			folderPath += "/"
+	}
+
+	input := &s3.PutObjectInput{
+			Bucket:      &m.Bucket,
+			Key:         &folderPath,
+			ContentType: aws.String("application/x-directory"), // MIME type indiquant un dossier
+	}
+
+	_, err := m.Client.PutObject(context.TODO(), input)
+	if err != nil {
+			return fmt.Errorf("erreur lors de la création du dossier %s : %v", folderPath, err)
+	}
+
+	getLogger().Info(fmt.Sprintf("Dossier %s créé avec succès dans S3", folderPath))
+	return nil
 }
