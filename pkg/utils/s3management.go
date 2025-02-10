@@ -243,7 +243,7 @@ func (m *S3Manager) Download(s3Path, localPath string) error {
 }
 
 // UploadFileToS3 téléverse un fichier local vers un chemin S3
-func (m *S3Manager) Upload(localPath, s3Path string) error {
+func (m *S3Manager) Upload(localPath, s3Path string, useGlacier bool) error {
 	// Ouvrir le fichier local
 	file, err := os.Open(localPath)
 	if err != nil {
@@ -256,6 +256,11 @@ func (m *S3Manager) Upload(localPath, s3Path string) error {
 	if err != nil {
 		return fmt.Errorf("erreur lors de la récupération des informations du fichier %s : %v", localPath, err)
 	}
+	// Déterminer la classe de stockage (STANDARD ou GLACIER)
+	var storageClass types.StorageClass = types.StorageClassStandard // Valeur par défaut
+	if useGlacier {
+		storageClass = types.StorageClassGlacier
+	}
 
 	// Préparer la requête de téléversement
 	input := &s3.PutObjectInput{
@@ -264,6 +269,7 @@ func (m *S3Manager) Upload(localPath, s3Path string) error {
 		Body:          file,
 		ContentLength: Int64Ptr(stat.Size()), // Convertir en *int64
 		ContentType:   aws.String("application/octet-stream"),
+		StorageClass:  storageClass,
 	}
 
 	// Téléverser le fichier

@@ -9,7 +9,7 @@ import (
 
 var logger = utils.LoggerFunc()
 
-func backupProcess(path []string, config utils.Backup, backupName string) error {
+func backupProcess(path []string, config utils.Backup, backupName string, glacierMode bool) error {
 	compressedPath := []string{}
 	for _, p := range path {
 		var compressed string
@@ -45,7 +45,7 @@ func backupProcess(path []string, config utils.Backup, backupName string) error 
 			}
 			s3client.ManageRetention(filepath.Join(config.Path.S3, filepath.Base(encryptedPath)), config.Retention.Standard.Days)
 			s3FilePath := filepath.Join(config.Path.S3, filepath.Base(encryptedPath))
-			err = s3client.Upload(encryptedPath, s3FilePath)
+			err = s3client.Upload(encryptedPath, s3FilePath, glacierMode)
 			if err != nil {
 				logger.Error(fmt.Sprintf("Failed to upload %s to %s: %v", encryptedPath, configServer.BucketName, err))
 				continue
@@ -69,7 +69,7 @@ func deleteFile(path string) error {
 	return nil
 }
 
-func CoreBackup(name string) error {
+func CoreBackup(name string, glacierMode bool) error {
 	logger.Info(fmt.Sprintf("Starting backup for: %s", name))
 	config, err := utils.GetConfig()
 	if err != nil {
@@ -92,7 +92,7 @@ func CoreBackup(name string) error {
 			return err
 		}
 		logger.Info(fmt.Sprintf("Successfully backed up MySQL for %s: %v", name, result))
-		backupProcess(result, config.Backups[name], name)
+		backupProcess(result, config.Backups[name], name, glacierMode)
 		return nil
 	case "folder":
 		logger.Info(fmt.Sprintf("Detected folder backup for %s", name))
@@ -102,7 +102,7 @@ func CoreBackup(name string) error {
 			return err
 		}
 		logger.Debug(fmt.Sprintln("Resultat de la copie de dossier:", result))
-		backupProcess(result, config.Backups[name], name)
+		backupProcess(result, config.Backups[name], name, glacierMode)
 		logger.Info(fmt.Sprintf("Successfully backed up folder for %s", name))
 		return nil
 	case "s3":
@@ -112,7 +112,7 @@ func CoreBackup(name string) error {
 			logger.Error(fmt.Sprintf("Failed to backup S3 for %s: %v", name, err))
 			return err
 		}
-		backupProcess(result, config.Backups[name], name)
+		backupProcess(result, config.Backups[name], name, glacierMode)
 		logger.Info(fmt.Sprintf("Successfully backed up S3 for %s: %v", name, result))
 		return nil
 	case "mongo":
@@ -123,7 +123,7 @@ func CoreBackup(name string) error {
 			return err
 		}
 		resultArray := []string{result}
-		backupProcess(resultArray, config.Backups[name], name)
+		backupProcess(resultArray, config.Backups[name], name, glacierMode)
 		logger.Info(fmt.Sprintf("Successfully backed up MongoDB for %s: %v", name, result))
 		return nil
 	case "sqlite":
@@ -134,7 +134,7 @@ func CoreBackup(name string) error {
 			return err
 		}
 		resultArray := []string{result}
-		backupProcess(resultArray, config.Backups[name], name)
+		backupProcess(resultArray, config.Backups[name], name, glacierMode)
 		logger.Info(fmt.Sprintf("Successfully backed up SQLite for %s: %v", name, result))
 		return nil
 	case "kubernetes":
@@ -144,7 +144,7 @@ func CoreBackup(name string) error {
 			logger.Error(fmt.Sprintf("Failed to backup Kubernetes for %s: %v", name, err))
 			return err
 		}
-		backupProcess(result, config.Backups[name], name)
+		backupProcess(result, config.Backups[name], name, glacierMode)
 		logger.Info(fmt.Sprintf("Successfully backed up Kubernetes for %s", name))
 		return nil
 	default:

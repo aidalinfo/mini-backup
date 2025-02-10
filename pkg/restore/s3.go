@@ -94,7 +94,7 @@ func RestoreS3(backupPath string, config utils.Backup, name string) error {
             }
 
             // Upload du fichier vers le bucket correspondant
-            err = s3client.Upload(path, relPath)
+            err = s3client.Upload(path, relPath, false)
             if err != nil {
                 logger.Error(fmt.Sprintf("Erreur lors du téléversement du fichier %s : %v", path, err), "[RESTORE] [S3]")
                 return fmt.Errorf("failed to upload file %s: %v", path, err)
