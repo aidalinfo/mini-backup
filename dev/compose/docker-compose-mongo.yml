@@ -1,0 +1,23 @@
+services:
+  # mini-backup:
+  #   build: .
+  #   container_name: mini-backup
+  #   ports:
+  #     - "8080:8080"
+  #   environment:
+  #     - AUTO_CONFIG=true
+  #   volumes:
+  #     - ./config:/app/config
+  #     - ./logs_server:/app/logs
+  #     - .env.compose:/app/.env
+
+  mongo:
+    image: mongo
+    restart: always
+    container_name: mongo
+    ports:
+      - 27017:27017
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: example
+  

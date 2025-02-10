@@ -1,0 +1,64 @@
+services:
+  # mini-backup:
+  #   build: .
+  #   container_name: mini-backup
+  #   ports:
+  #     - "8080:8080"
+  #   environment:
+  #     - AUTO_CONFIG=true
+  #   volumes:
+  #     - ./config:/app/config
+  #     - ./logs_server:/app/logs
+  #     - .env.compose:/app/.env
+
+# #Minio Container
+  minio:
+    image: minio/minio
+    container_name: minio
+    restart: always
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: miniopassword
+    command: server /data --console-address ":9001"
+    
+  createbuckets:
+    image: minio/mc
+    depends_on:
+      - minio
+    entrypoint: >
+      /bin/sh -c "
+      /usr/bin/mc config host add minio http://minio:9000 minioadmin miniopassword;
+      /usr/bin/mc rm -r --force minio/backup;
+      /usr/bin/mc mb minio/backup;
+      /usr/bin/mc policy download minio/backup;
+      exit 0;
+      "
+
+  minio2:
+    image: minio/minio
+    container_name: minio2
+    restart: always
+    ports:
+      - "9002:9000"
+      - "9003:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: miniopassword
+    command: server /data --console-address ":9001"
+    
+  createbuckets2:
+    image: minio/mc
+    depends_on:
+      - minio2
+    entrypoint: >
+      /bin/sh -c "
+      sleep 10;
+      /usr/bin/mc config host add minio2 http://minio2:9000 minioadmin miniopassword;
+      /usr/bin/mc rm -r --force minio2/data;
+      /usr/bin/mc mb minio2/data;
+      /usr/bin/mc anonymous set download minio2/data;
+      exit 0;
+      "

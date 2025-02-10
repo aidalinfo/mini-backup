@@ -1,0 +1,21 @@
+backups:
+  sqlserver-01:
+    type: mysql
+    mysql:
+      allDatabases: true
+      host: "localhost"
+      port: "3306"
+      user: "root"
+      password: "example"
+      ssl: "false"
+    path:
+      local: "./backups"
+      s3: "backup/glpi-dev/mysql"
+    retention:
+      standard: 
+        days: 1
+      glacier:
+        days: 365
+    schedule:
+      standard: "*/2 * * * *"
+      glacier: "0 18 * * 5"

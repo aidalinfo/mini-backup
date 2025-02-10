@@ -36,6 +36,7 @@ type Mongo struct {
 }
 
 type Mysql struct {
+	AllDatabases bool `yaml:"allDatabases,omitempty"`
 	Databases []string `yaml:"databases,omitempty"`
 	Host      string   `yaml:"host,omitempty"`
 	Port      string   `yaml:"port,omitempty"`
@@ -84,6 +85,7 @@ type Path struct {
 type S3config struct {
 	Bucket     []string `yaml:"bucket"`
 	Endpoint   string   `yaml:"endpoint"`
+	PathStyle bool `yaml:"pathStyle"`
 	Region     string   `yaml:"region"`
 	ACCESS_KEY string   `yaml:"ACCESS_KEY"`
 	SECRET_KEY string   `yaml:"SECRET_KEY"`
@@ -130,17 +132,17 @@ func GetConfig() (*BackupConfig, error) {
 	// Lire tous les fichiers du répertoire de configuration
 	files, err := os.ReadDir(configDir)
 	if err != nil {
-		logger.Error(fmt.Sprintf("Failed to read config directory: %v", err), source_utils)
+		getLogger().Error(fmt.Sprintf("Failed to read config directory: %v", err), source_utils)
 		return nil, fmt.Errorf("failed to read config directory: %v", err)
 	}
 
 	// Charger d'abord le fichier config.yaml principal s'il existe
 	mainConfigPath := filepath.Join(configDir, "config.yaml")
 	if _, err := os.Stat(mainConfigPath); err == nil {
-		logger.Info(fmt.Sprintf("Loading main config from %s", mainConfigPath), source_utils)
+		getLogger().Info(fmt.Sprintf("Loading main config from %s", mainConfigPath), source_utils)
 		mainConfig, err := LoadConfig(mainConfigPath)
 		if err != nil {
-			logger.Error(fmt.Sprintf("Failed to load main config: %v", err), source_utils)
+			getLogger().Error(fmt.Sprintf("Failed to load main config: %v", err), source_utils)
 		} else {
 			for name, backup := range mainConfig.Backups {
 				mergedConfig.Backups[name] = backup
@@ -152,18 +154,18 @@ func GetConfig() (*BackupConfig, error) {
 	for _, file := range files {
 		if !file.IsDir() && (strings.HasSuffix(file.Name(), ".backups.yaml") || strings.HasSuffix(file.Name(), ".backups.yml")) {
 			configPath := filepath.Join(configDir, file.Name())
-			logger.Info(fmt.Sprintf("Loading backup config from %s", configPath), source_utils)
+			getLogger().Info(fmt.Sprintf("Loading backup config from %s", configPath), source_utils)
 
 			config, err := LoadConfig(configPath)
 			if err != nil {
-				logger.Error(fmt.Sprintf("Failed to load config from %s: %v", configPath, err), source_utils)
+				getLogger().Error(fmt.Sprintf("Failed to load config from %s: %v", configPath, err), source_utils)
 				continue
 			}
 
 			// Fusionner les configurations
 			for name, backup := range config.Backups {
 				if _, exists := mergedConfig.Backups[name]; exists {
-					logger.Error(fmt.Sprintf("Backup configuration '%s' from %s overrides existing configuration", name, configPath), source_utils)
+					getLogger().Error(fmt.Sprintf("Backup configuration '%s' from %s overrides existing configuration", name, configPath), source_utils)
 				}
 				mergedConfig.Backups[name] = backup
 			}
