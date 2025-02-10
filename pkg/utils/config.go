@@ -83,6 +83,7 @@ type Path struct {
 }
 
 type S3config struct {
+	All        bool     `yaml:"all"`
 	Bucket     []string `yaml:"bucket"`
 	Endpoint   string   `yaml:"endpoint"`
 	PathStyle bool `yaml:"pathStyle"`

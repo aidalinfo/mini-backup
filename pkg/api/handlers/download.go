@@ -35,19 +35,17 @@ func DownloadBackup(c *fiber.Ctx) error {
 	// Initialiser le client S3
 	s3client, err := utils.RstorageManager(firstStorageName, &firstStorageConfig)
 	if err != nil {
+		logger.Error(fmt.Sprintf("Failed to initialize S3 manager : %v", err), "[API] [HANDLER PACKAGE]")
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": fmt.Sprintf("Failed to initialize S3 manager: %v", err),
 		})
 	}
 
-	// Récupérer le gestionnaire S3
-	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fmt.Sprintf("Erreur d'initialisation S3: %v", err)})
-	}
 	logger.Info(fmt.Sprintf("DownloadBackup file : %s", fileName))
 	// Télécharger et déchiffrer le fichier
 	decryptedData, err := s3client.DownloadAndDecrypt(fileName)
 	if err != nil {
+		logger.Error(fmt.Sprintf("Impossible de télécharger/déchiffrer le fichier : %v", err), "[API] [HANDLER PACKAGE]")
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fmt.Sprintf("Impossible de télécharger/déchiffrer le fichier: %v", err)})
 	}
 

@@ -180,6 +180,25 @@ func (m *S3Manager) ListBackups(prefix string) ([]string, error) {
 	getLogger().Info(fmt.Sprintf("Liste des backups (préfixe: '%s'): %v", prefix, backups))
 	return backups, nil
 }
+// ListBuckets récupère tous les buckets accessibles avec les credentials
+func (m *S3Manager) ListBuckets() ([]string, error) {
+	// Récupération de la liste des buckets
+	result, err := m.Client.ListBuckets(context.TODO(), &s3.ListBucketsInput{})
+	if err != nil {
+		getLogger().Error(fmt.Sprintf("Erreur lors de la récupération des buckets : %v", err))
+		return nil, fmt.Errorf("erreur lors de la récupération des buckets : %v", err)
+	}
+
+	// Extraction des noms des buckets
+	buckets := []string{}
+	for _, bucket := range result.Buckets {
+		buckets = append(buckets, *bucket.Name)
+	}
+
+	getLogger().Info(fmt.Sprintf("Liste des buckets S3 récupérée avec succès : %v", buckets))
+	return buckets, nil
+}
+
 
 // DownloadFileFromS3 télécharge un fichier depuis S3 vers un chemin local
 func (m *S3Manager) Download(s3Path, localPath string) error {
