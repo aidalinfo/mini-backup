@@ -68,7 +68,7 @@ func CoreRestore(name string, backupFile string, restoreName string, restorePara
 			logger.Error(fmt.Sprintf("Failed to restore MySQL for %s: %v", name, err), "[RESTORE] [CORE]")
 			return err
 		}
-		return RestoreMySQL(result, backupConfig)
+		return RestoreMySQL(name, backupConfig, result, restoreParams)
 	case "folder":
 		logger.Info(fmt.Sprintf("Detected folder restore for %s", name), "[RESTORE] [CORE]")
 		result, err := restoreProcess(name, backupConfig, backupFile)

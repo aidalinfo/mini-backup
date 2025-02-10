@@ -13,7 +13,7 @@ backups:
       s3: "backup/glpi-dev/mysql"
     retention:
       standard: 
-        days: 1
+        days: 20
       glacier:
         days: 365
     schedule:

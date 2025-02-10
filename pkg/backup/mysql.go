@@ -48,7 +48,7 @@ func BackupMySQL(name string, config utils.Backup) ([]string, error) {
 		}
 	}
 
-	return dumping, nil
+	return []string{parentDir}, nil
 }
 
 // dumpAllDatabases executes mysqldump for all databases
