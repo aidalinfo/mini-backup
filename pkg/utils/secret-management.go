@@ -7,8 +7,9 @@ import (
 	infisical "github.com/infisical/go-sdk"
 )
 
-var logger = LoggerFunc()
-
+func getLogger() *Logger {
+	return LoggerFunc()
+}
 func GetSecret(secretName string, environment string) (string, error) {
 	// Récupération des variables d'environnement
 	if environment == "" {
@@ -22,10 +23,10 @@ func GetSecret(secretName string, environment string) (string, error) {
 	}
 
 	if accessToken == "" {
-		logger.Error("L'environnement INFISICAL_API_KEY est manquant")
+		getLogger().Error("L'environnement INFISICAL_API_KEY est manquant")
 		return "", fmt.Errorf("l'environnement INFISICAL_API_KEY est manquant")
 	}
-	logger.Info(fmt.Sprintf("Connexion à l'API Infisical : %s", infisicalURL))
+	getLogger().Info(fmt.Sprintf("Connexion à l'API Infisical : %s", infisicalURL))
 	// Initialisation du client Infisical
 	client := infisical.NewInfisicalClient(context.Background(), infisical.Config{
 		SiteUrl:          infisicalURL,
@@ -42,11 +43,11 @@ func GetSecret(secretName string, environment string) (string, error) {
 		ProjectID:   INFISICAL_PROJECT_ID,
 		SecretPath:  "/",
 	})
-	logger.Debug(fmt.Sprintf("Valeur du secret %s : %s", secretName, secret.SecretValue))
+	getLogger().Debug(fmt.Sprintf("Valeur du secret %s : %s", secretName, secret.SecretValue))
 	if err != nil {
-		logger.Error(fmt.Sprintf("Erreur lors de la récupération du secret %s: %v", secretName, err))
+		getLogger().Error(fmt.Sprintf("Erreur lors de la récupération du secret %s: %v", secretName, err))
 		return "", fmt.Errorf("échec de la récupération du secret: %v", err)
 	}
-	logger.Info("Secret récupéré avec succès")
+	getLogger().Info("Secret récupéré avec succès")
 	return secret.SecretValue, nil
 }

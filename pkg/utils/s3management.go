@@ -67,7 +67,7 @@ func AwsCredentialFileCreateFunc(accessKey, secretKey string, header string) err
 		sectionHeader = "[" + header + "]"
 	}
 	if existingContent != "" && containsSection(existingContent, sectionHeader) {
-		logger.Info(fmt.Sprintf("La section %s existe déjà dans le fichier credentials. Aucune modification nécessaire.", sectionHeader))
+		getLogger().Info(fmt.Sprintf("La section %s existe déjà dans le fichier credentials. Aucune modification nécessaire.", sectionHeader))
 		return nil
 	}
 
@@ -84,7 +84,7 @@ aws_secret_access_key = %s
 		return fmt.Errorf("erreur lors de l'écriture du fichier credentials : %v", err)
 	}
 
-	logger.Info(fmt.Sprintf("La section %s a été ajoutée avec succès au fichier credentials : %s", sectionHeader, awsCredentialsPath))
+	getLogger().Info(fmt.Sprintf("La section %s a été ajoutée avec succès au fichier credentials : %s", sectionHeader, awsCredentialsPath))
 	return nil
 }
 
@@ -100,7 +100,7 @@ func containsSection(content, sectionHeader string) bool {
 }
 
 // NewS3Manager initialise le gestionnaire S3 en utilisant la configuration AWS par défaut
-func NewS3Manager(bucket, region, endpoint string, awsprofile string) (*S3Manager, error) {
+func NewS3Manager(bucket, region, endpoint string, awsprofile string, pathStyle bool) (*S3Manager, error) {
 	// Charger la configuration par défaut depuis les fichiers AWS (credentials et config)
 	var profileName string
 	if awsprofile == "" {
@@ -121,7 +121,7 @@ func NewS3Manager(bucket, region, endpoint string, awsprofile string) (*S3Manage
 	}
 	// Initialiser le client S3 avec le point de terminaison Scaleway
 	client := s3.NewFromConfig(cfg, func(o *s3.Options) {
-		o.UsePathStyle = true      // Mode de chemin d'accès (obligatoire pour Scaleway)
+		o.UsePathStyle = pathStyle      // Mode de chemin d'accès (obligatoire pour Scaleway)
 		o.BaseEndpoint = &endpoint // Point de terminaison personnalisé
 	})
 
@@ -140,7 +140,7 @@ func (m *S3Manager) ListBackupsApi(prefix string) ([]BackupDetails, error) {
 	}
 	result, err := m.Client.ListObjectsV2(context.TODO(), input)
 	if err != nil {
-		logger.Error(fmt.Sprintf("Erreur lors de la liste des objets avec le préfixe '%s': %v", prefix, err))
+		getLogger().Error(fmt.Sprintf("Erreur lors de la liste des objets avec le préfixe '%s': %v", prefix, err))
 		return nil, fmt.Errorf("erreur lors de la liste des objets : %v", err)
 	}
 
@@ -153,7 +153,7 @@ func (m *S3Manager) ListBackupsApi(prefix string) ([]BackupDetails, error) {
 		})
 	}
 
-	logger.Debug(fmt.Sprintf("Liste des backups détaillée (préfixe: '%s'): %v", prefix, backups),"[UTILS] [S3MANAGER]")
+	getLogger().Debug(fmt.Sprintf("Liste des backups détaillée (préfixe: '%s'): %v", prefix, backups),"[UTILS] [S3MANAGER]")
 	return backups, nil
 }
 
@@ -168,7 +168,7 @@ func (m *S3Manager) ListBackups(prefix string) ([]string, error) {
 
 	result, err := m.Client.ListObjectsV2(context.TODO(), input)
 	if err != nil {
-		logger.Error(fmt.Sprintf("Erreur lors de la liste des objets avec le préfixe '%s': %v", prefix, err))
+		getLogger().Error(fmt.Sprintf("Erreur lors de la liste des objets avec le préfixe '%s': %v", prefix, err))
 		return nil, fmt.Errorf("erreur lors de la liste des objets : %v", err)
 	}
 
@@ -177,7 +177,7 @@ func (m *S3Manager) ListBackups(prefix string) ([]string, error) {
 		backups = append(backups, *item.Key)
 	}
 
-	logger.Info(fmt.Sprintf("Liste des backups (préfixe: '%s'): %v", prefix, backups))
+	getLogger().Info(fmt.Sprintf("Liste des backups (préfixe: '%s'): %v", prefix, backups))
 	return backups, nil
 }
 
@@ -192,7 +192,7 @@ func (m *S3Manager) Download(s3Path, localPath string) error {
 	// Obtenir l'objet depuis S3
 	objectOutput, err := m.Client.GetObject(context.TODO(), getInput)
 	if err != nil {
-		logger.Error(fmt.Sprintf("Erreur lors du téléchargement de %s depuis S3 : %v", s3Path, err))
+		getLogger().Error(fmt.Sprintf("Erreur lors du téléchargement de %s depuis S3 : %v", s3Path, err))
 		return fmt.Errorf("erreur lors du téléchargement de %s : %v", s3Path, err)
 	}
 	defer objectOutput.Body.Close()
@@ -200,12 +200,12 @@ func (m *S3Manager) Download(s3Path, localPath string) error {
 	// Créer le fichier local
 	err = os.MkdirAll(filepath.Dir(localPath), 0755)
 	if err != nil {
-		logger.Error(fmt.Sprintf("Erreur lors de la création des répertoires pour %s : %v", localPath, err))
+		getLogger().Error(fmt.Sprintf("Erreur lors de la création des répertoires pour %s : %v", localPath, err))
 		return err
 	}
 	localFile, err := os.Create(localPath)
 	if err != nil {
-		logger.Error(fmt.Sprintf("Erreur lors de la création du fichier local %s : %v", localPath, err))
+		getLogger().Error(fmt.Sprintf("Erreur lors de la création du fichier local %s : %v", localPath, err))
 		return err
 	}
 	defer localFile.Close()
@@ -213,11 +213,11 @@ func (m *S3Manager) Download(s3Path, localPath string) error {
 	// Copier le contenu de l'objet dans le fichier local
 	_, err = io.Copy(localFile, objectOutput.Body)
 	if err != nil {
-		logger.Error(fmt.Sprintf("Erreur lors de la copie du contenu de %s vers %s : %v", s3Path, localPath, err))
+		getLogger().Error(fmt.Sprintf("Erreur lors de la copie du contenu de %s vers %s : %v", s3Path, localPath, err))
 		return err
 	}
 
-	logger.Info(fmt.Sprintf("Fichier %s téléchargé avec succès vers %s", s3Path, localPath))
+	getLogger().Info(fmt.Sprintf("Fichier %s téléchargé avec succès vers %s", s3Path, localPath))
 	return nil
 }
 
@@ -248,11 +248,11 @@ func (m *S3Manager) Upload(localPath, s3Path string) error {
 	// Téléverser le fichier
 	_, err = m.Client.PutObject(context.TODO(), input)
 	if err != nil {
-		logger.Error(fmt.Sprintf("Erreur lors de la téléversement du fichier %s vers %s : %v", localPath, s3Path, err))
+		getLogger().Error(fmt.Sprintf("Erreur lors de la téléversement du fichier %s vers %s : %v", localPath, s3Path, err))
 		return fmt.Errorf("erreur lors de l'upload vers S3 (local: %s, s3: %s) : %v", localPath, s3Path, err)
 	}
 
-	logger.Info(fmt.Sprintf("Fichier %s téléversé avec succès vers %s", localPath, s3Path))
+	getLogger().Info(fmt.Sprintf("Fichier %s téléversé avec succès vers %s", localPath, s3Path))
 	return nil
 }
 func (m *S3Manager) ManageRetention(s3Path string, retentionDays int) error {
@@ -266,23 +266,23 @@ func (m *S3Manager) ManageRetention(s3Path string, retentionDays int) error {
 	}
 	result, err := m.Client.ListObjectsV2(context.TODO(), input)
 	if err != nil {
-		logger.Error(fmt.Sprintf("Erreur lors de la liste des objets dans %s : %v", s3Path, err))
+		getLogger().Error(fmt.Sprintf("Erreur lors de la liste des objets dans %s : %v", s3Path, err))
 		return fmt.Errorf("erreur lors de la liste des objets dans %s : %v", s3Path, err)
 	}
 
 	// Parcourir les objets et vérifier leur date de modification
 	for _, obj := range result.Contents {
 		if strings.HasSuffix(*obj.Key, "/") {
-			logger.Debug(fmt.Sprintf("Ignoré : %s c'est un dossier", *obj.Key))
+			getLogger().Debug(fmt.Sprintf("Ignoré : %s c'est un dossier", *obj.Key))
 			continue
 		}
 		if obj.LastModified.Before(cutoffDate) {
 			// Supprimer les fichiers obsolètes
 			err := m.deleteObject(*obj.Key)
 			if err != nil {
-				logger.Error(fmt.Sprintf("Erreur lors de la suppression de %s : %v", *obj.Key, err))
+				getLogger().Error(fmt.Sprintf("Erreur lors de la suppression de %s : %v", *obj.Key, err))
 			} else {
-				logger.Info(fmt.Sprintf("Fichier %s supprimé pour respect de la rétention.", *obj.Key))
+				getLogger().Info(fmt.Sprintf("Fichier %s supprimé pour respect de la rétention.", *obj.Key))
 			}
 		}
 	}
@@ -350,7 +350,7 @@ func (m *S3Manager) CopyBackupToLocal(destination string) error {
 			return fmt.Errorf("erreur lors de la copie du contenu de %s vers %s : %v", *object.Key, localPath, err)
 		}
 
-		logger.Debug(fmt.Sprintf("Fichier %s copié avec succès vers %s", *object.Key, localPath))
+		getLogger().Debug(fmt.Sprintf("Fichier %s copié avec succès vers %s", *object.Key, localPath))
 	}
 
 	return nil
@@ -359,14 +359,14 @@ func (m *S3Manager) CopyBackupToLocal(destination string) error {
 func RstorageManager(name string, config *RStorageConfig) (*S3Manager, error) {
 	err := AwsCredentialFileCreateFunc(config.AccessKey, config.SecretKey, name)
 	if err != nil {
-		logger.Error(fmt.Sprintf("Erreur lors de la génération du fichier AWS credentials : %v", err))
+		getLogger().Error(fmt.Sprintf("Erreur lors de la génération du fichier AWS credentials : %v", err))
 	}
 	// Initialisation du S3Manager
-	s3Manager, err := NewS3Manager(config.BucketName, config.Region, config.Endpoint, name)
+	s3Manager, err := NewS3Manager(config.BucketName, config.Region, config.Endpoint, name, config.PathStyle)
 	if err != nil {
-		logger.Error(fmt.Sprintf("Erreur lors de l'initialisation du gestionnaire S3 : %v\n", err))
+		getLogger().Error(fmt.Sprintf("Erreur lors de l'initialisation du gestionnaire S3 : %v\n", err))
 	}
-	logger.Info("S3Manager initialized")
+	getLogger().Info("S3Manager initialized")
 	return s3Manager, nil
 }
 
@@ -381,7 +381,7 @@ func (m *S3Manager) DownloadAndDecrypt(s3Path string) ([]byte, error) {
 	// Récupérer l'objet S3
 	objectOutput, err := m.Client.GetObject(context.TODO(), getInput)
 	if err != nil {
-		logger.Error(fmt.Sprintf("Erreur lors du téléchargement de %s depuis S3 : %v", s3Path, err))
+		getLogger().Error(fmt.Sprintf("Erreur lors du téléchargement de %s depuis S3 : %v", s3Path, err))
 		return nil, fmt.Errorf("erreur lors du téléchargement de %s : %v", s3Path, err)
 	}
 	defer objectOutput.Body.Close()
@@ -390,18 +390,18 @@ func (m *S3Manager) DownloadAndDecrypt(s3Path string) ([]byte, error) {
 	var encryptedData bytes.Buffer
 	_, err = io.Copy(&encryptedData, objectOutput.Body)
 	if err != nil {
-		logger.Error(fmt.Sprintf("Erreur lors de la lecture des données chiffrées de %s : %v", s3Path, err))
+		getLogger().Error(fmt.Sprintf("Erreur lors de la lecture des données chiffrées de %s : %v", s3Path, err))
 		return nil, fmt.Errorf("erreur lors de la lecture du fichier chiffré : %v", err)
 	}
 
 	// Déchiffrer le fichier en mémoire
 	decryptedData, err := DecryptBytes(encryptedData.Bytes())
 	if err != nil {
-		logger.Error(fmt.Sprintf("Erreur lors du déchiffrement de %s : %v", s3Path, err))
+		getLogger().Error(fmt.Sprintf("Erreur lors du déchiffrement de %s : %v", s3Path, err))
 		return nil, fmt.Errorf("erreur lors du déchiffrement : %v", err)
 	}
 
-	logger.Info(fmt.Sprintf("Fichier %s téléchargé et déchiffré avec succès", s3Path))
+	getLogger().Info(fmt.Sprintf("Fichier %s téléchargé et déchiffré avec succès", s3Path))
 	return decryptedData, nil
 }
 
@@ -415,72 +415,10 @@ func (m *S3Manager) GeneratePresignedURL(s3Path string, expiration time.Duration
 	}, s3.WithPresignExpires(expiration))
 
 	if err != nil {
-		logger.Error(fmt.Sprintf("Erreur lors de la génération de l'URL signée pour %s : %v", s3Path, err))
+		getLogger().Error(fmt.Sprintf("Erreur lors de la génération de l'URL signée pour %s : %v", s3Path, err))
 		return "", fmt.Errorf("erreur lors de la génération de l'URL signée : %v", err)
 	}
 
-	logger.Info(fmt.Sprintf("URL signée générée avec succès pour %s", s3Path))
+	getLogger().Info(fmt.Sprintf("URL signée générée avec succès pour %s", s3Path))
 	return req.URL, nil
-}
-
-
-
-func ManagerStorageFunc() (*S3Manager, error) {
-	// Appeler server config
-	config, err := GetConfigServer()
-	if err != nil {
-		return nil, err
-	}
-	logger.Debug(fmt.Sprintf("config: %v", config))
-	// Appeler `getSecret` pour récupérer les informations nécessaires
-	var infisical_environnement string
-	if GetEnv[string]("GO_ENV") == "dev" {
-		infisical_environnement = "dev"
-	} else {
-		infisical_environnement = "Production"
-	}
-	bucketName, err := GetSecret("BUCKET_NAME_PROD", infisical_environnement)
-	logger.Debug(fmt.Sprintf("bucketName: %s", bucketName))
-	if err != nil {
-		logger.Error(fmt.Sprintf("Erreur : %v", err))
-	}
-	accessKey, err := GetSecret("SCW_ACCESS_BACKUP_ACCESS_KEY", infisical_environnement)
-	logger.Debug(fmt.Sprintf("accessKey: %s", accessKey))
-	if err != nil {
-		logger.Error(fmt.Sprintf("Erreur : %v", err))
-	}
-	secretKey, err := GetSecret("SCW_ACCESS_BACKUP_SECRET_KEY", infisical_environnement)
-	logger.Debug(fmt.Sprintf("secretKey: %s", secretKey))
-	if err != nil {
-		logger.Error(fmt.Sprintf("Erreur : %v", err))
-	}
-	region, err := GetSecret("BUCKET_REGION_PROD", infisical_environnement)
-	logger.Debug(fmt.Sprintf("region: %s", region))
-	if err != nil {
-		logger.Error(fmt.Sprintf("Erreur : %v", err))
-	}
-	endpoint, err := GetSecret("BUCKET_ENDPOINT_PROD", infisical_environnement)
-	logger.Debug(fmt.Sprintf("endpoint: %s", endpoint))
-	if err != nil {
-		logger.Error(fmt.Sprintf("Erreur : %v", err))
-	}
-	logger.Debug(fmt.Sprintf("Configuration S3 : bucketName: %s, region: %s, endpoint: %s", bucketName, region, endpoint))
-	// Générer le fichier credentials
-	err = AwsCredentialFileCreateFunc(accessKey, secretKey, "")
-	if err != nil {
-		logger.Error(fmt.Sprintf("Erreur lors de la génération du fichier AWS credentials : %v", err))
-	}
-
-	// Initialisation du S3Manager
-	s3Manager, err := NewS3Manager(bucketName, region, endpoint, "")
-	if err != nil {
-		logger.Error(fmt.Sprintf("Erreur lors de l'initialisation du gestionnaire S3 : %v\n", err))
-	}
-	logger.Info("S3Manager initialized")
-	// list, err := s3Manager.ListBackups()
-	// if err != nil {
-	// 	logger.Error(fmt.Sprintf("Erreur lors de la liste des objets : %v", err))
-	// }
-	// logger.Debug(fmt.Sprintf("Liste des objets : %v", list))
-	return s3Manager, nil
 }
