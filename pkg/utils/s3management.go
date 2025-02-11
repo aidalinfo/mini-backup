@@ -282,7 +282,7 @@ func (m *S3Manager) Upload(localPath, s3Path string, useGlacier bool) error {
 	getLogger().Info(fmt.Sprintf("Fichier %s téléversé avec succès vers %s", localPath, s3Path))
 	return nil
 }
-func (m *S3Manager) ManageRetention(s3Path string, retentionDays int) error {
+func (m *S3Manager) ManageRetention(s3Path string, retentionDays int, useGlacier bool) error {
 	// Calculer la date limite
 	cutoffDate := time.Now().AddDate(0, 0, -retentionDays)
 
@@ -303,8 +303,36 @@ func (m *S3Manager) ManageRetention(s3Path string, retentionDays int) error {
 			getLogger().Debug(fmt.Sprintf("Ignoré : %s c'est un dossier", *obj.Key))
 			continue
 		}
+
+		// Récupérer les métadonnées de l'objet pour vérifier sa classe de stockage
+		headInput := &s3.HeadObjectInput{
+			Bucket: &m.Bucket,
+			Key:    obj.Key,
+		}
+		headResult, err := m.Client.HeadObject(context.TODO(), headInput)
+		if err != nil {
+			getLogger().Error(fmt.Sprintf("Erreur lors de la récupération des métadonnées de %s : %v", *obj.Key, err))
+			continue
+		}
+
+		// Vérifier si l'objet est en STANDARD ou GLACIER
+		storageClass := headResult.StorageClass
+		isGlacierObject := (storageClass == types.StorageClassGlacier || storageClass == types.StorageClassDeepArchive)
+
+		// Si on gère les fichiers GLACIER mais que ce fichier n'est pas en Glacier, on le skip
+		if useGlacier && !isGlacierObject {
+			getLogger().Debug(fmt.Sprintf("Fichier %s ignoré (pas en Glacier)", *obj.Key))
+			continue
+		}
+
+		// Si on gère les fichiers STANDARD mais que ce fichier est en Glacier, on le skip
+		if !useGlacier && isGlacierObject {
+			getLogger().Debug(fmt.Sprintf("Fichier %s ignoré (en Glacier)", *obj.Key))
+			continue
+		}
+
+		// Vérifier si l'objet doit être supprimé
 		if obj.LastModified.Before(cutoffDate) {
-			// Supprimer les fichiers obsolètes
 			err := m.deleteObject(*obj.Key)
 			if err != nil {
 				getLogger().Error(fmt.Sprintf("Erreur lors de la suppression de %s : %v", *obj.Key, err))
@@ -315,6 +343,7 @@ func (m *S3Manager) ManageRetention(s3Path string, retentionDays int) error {
 	}
 	return nil
 }
+
 
 // deleteObject supprime un objet du bucket S3
 func (m *S3Manager) deleteObject(key string) error {

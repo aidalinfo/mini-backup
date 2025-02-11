@@ -43,7 +43,7 @@ func backupProcess(path []string, config utils.Backup, backupName string, glacie
 				logger.Error(fmt.Sprintf("Failed to get storage manager: %v", err))
 				continue
 			}
-			s3client.ManageRetention(filepath.Join(config.Path.S3, filepath.Base(encryptedPath)), config.Retention.Standard.Days)
+			s3client.ManageRetention(filepath.Join(config.Path.S3, filepath.Base(encryptedPath)), config.Retention.Standard.Days, glacierMode)
 			s3FilePath := filepath.Join(config.Path.S3, filepath.Base(encryptedPath))
 			err = s3client.Upload(encryptedPath, s3FilePath, glacierMode)
 			if err != nil {
