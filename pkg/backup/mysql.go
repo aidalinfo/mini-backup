@@ -26,7 +26,7 @@ func BackupMySQL(name string, config utils.Backup) ([]string, error) {
 	dumping := []string{}
 
 	// Vérifie si allDatabases est activé
-	if config.Mysql.AllDatabases {
+	if config.Mysql.All {
 		outputFile := filepath.Join(parentDir, fmt.Sprintf("%s-all_databases.sql", name))
 
 		result, err := dumpAllDatabases(name, config, outputFile)

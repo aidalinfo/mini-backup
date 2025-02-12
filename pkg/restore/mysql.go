@@ -53,7 +53,7 @@ func RestoreMySQL(name string, config utils.Backup, backupDir string, params any
 
 	// Si aucun paramètre spécifique, utiliser la config
 	if len(databasesToRestore) == 0 {
-		if config.Mysql.AllDatabases {
+		if config.Mysql.All {
 			// Restaurer toute la BDD si le fichier "all_databases.sql" existe
 			if hasAllDatabasesBackup {
 				return restoreAllDatabases(allDatabasesFile, config, logger)

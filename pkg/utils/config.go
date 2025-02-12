@@ -36,7 +36,7 @@ type Mongo struct {
 }
 
 type Mysql struct {
-	AllDatabases bool `yaml:"allDatabases,omitempty"`
+	All bool `yaml:"all,omitempty"`
 	Databases []string `yaml:"databases,omitempty"`
 	Host      string   `yaml:"host,omitempty"`
 	Port      string   `yaml:"port,omitempty"`
