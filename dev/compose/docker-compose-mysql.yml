@@ -1,0 +1,33 @@
+services:
+  # mini-backup:
+  #   build: .
+  #   container_name: mini-backup
+  #   ports:
+  #     - "8080:8080"
+  #   environment:
+  #     - AUTO_CONFIG=true
+  #   volumes:
+  #     - ./config:/app/config
+  #     - ./logs_server:/app/logs
+  #     - .env.compose:/app/.env
+  mysql:
+    image: mysql:8.0
+    container_name: mysql
+    ports:
+      - "3306:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=example
+      - MYSQL_DATABASE=glpidb
+      - MYSQL_USER=glpi_user
+      - MYSQL_PASSWORD=glpi
+    volumes:
+      - ./mysql/data:/var/lib/mysql
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    restart: always
+  phpmyadmin:
+    image: phpmyadmin
+    restart: always
+    ports:
+      - 8080:80
+    environment:
+      - PMA_ARBITRARY=1

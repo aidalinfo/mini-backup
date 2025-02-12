@@ -1,0 +1,19 @@
+backups:
+  mongo:
+    type: mongo
+    mongo: 
+      host: "mongo"
+      port: "27017"
+      user: "root"
+      password: "example"
+      ssl: false
+    path:
+      local: "./backups"
+      s3: "backup/mongo/mongo"
+    retention:
+      standard: 
+        days: 14
+      glacier:
+        days: 365
+    schedule:
+      standard: "*/5 * * * *"

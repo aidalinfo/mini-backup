@@ -27,11 +27,11 @@ func (s *Scheduler) AddJob(schedule string, job func()) error {
 // Start starts the scheduler.
 func (s *Scheduler) Start() {
 	s.cron.Start()
-	logger.Info("Scheduler started")
+	getLogger().Info("Scheduler started")
 }
 
 // Stop stops the scheduler.
 func (s *Scheduler) Stop() {
 	s.cron.Stop()
-	logger.Info("Scheduler stopped")
+	getLogger().Info("Scheduler stopped")
 }

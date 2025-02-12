@@ -12,3 +12,5 @@ build/
 logs_server/
 kubeconfig.yaml
 kubeconfig2.yaml
+datatest/
+dev/compose/mysql

@@ -9,142 +9,151 @@ import (
 	"time"
 
 	"mini-backup/pkg/utils"
+	"mini-backup/pkg/utils/kubernetes"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/clientcmd"
+	"gopkg.in/yaml.v3"
 )
 
-// BackupKube sauvegarde toutes les ressources Kubernetes dans un fichier JSON.
-func BackupKube(kubeConfigPath, backupDir string) error {
+func BackupPVCData(name string, config utils.Backup, baseVolumesDir string) (string, error) {
 	logger := utils.LoggerFunc()
-	logger.Info(fmt.Sprintf("Starting Kubernetes backup using config: %s", kubeConfigPath))
+	logger.Info(fmt.Sprintf("Starting PVC data backup for %s", name))
 
-	// Charger la configuration kubectl
-	config, err := clientcmd.BuildConfigFromFlags("", kubeConfigPath)
-	if err != nil {
-		logger.Error(fmt.Sprintf("Failed to load kubeconfig: %v", err))
-		return err
-	}
-
-	// Créer le client Kubernetes
-	clientset, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		logger.Error(fmt.Sprintf("Failed to create Kubernetes client: %v", err))
-		return err
-	}
-
-	// Initialiser l'état du cluster
-	state := ClusterState{
-		Timestamp: time.Now().Format(time.RFC3339),
-		Resources: make(map[string][]Resource),
+	if config.Kubernetes == nil {
+		return "", fmt.Errorf("kubernetes configuration is missing")
 	}
 
 	ctx := context.TODO()
-
-	// Sauvegarder les namespaces
-	if err := backupNamespaces(ctx, clientset, &state, logger); err != nil {
-		logger.Error(fmt.Sprintf("Failed to backup namespaces: %v", err))
-		return err
-	}
-
-	// Sauvegarder les ressources namespaced
-	backupNamespacedResources(ctx, clientset, &state, logger)
-
-	// Sauvegarder les ressources au niveau cluster
-	backupClusterResources(ctx, clientset, &state, logger)
-
-	// Sauvegarder l'état dans un fichier JSON
-	backupFile := filepath.Join(backupDir, fmt.Sprintf("k8s-backup-%s.json", time.Now().Format("2006-01-02-15-04-05")))
-	if err := saveToFile(state, backupFile, logger); err != nil {
-		logger.Error(fmt.Sprintf("Failed to save backup file: %v", err))
-		return err
-	}
-
-	logger.Info(fmt.Sprintf("Kubernetes backup completed successfully. File saved at: %s", backupFile))
-	return nil
-}
-
-// ClusterState représente l'état du cluster Kubernetes.
-type ClusterState struct {
-	Timestamp  string                `json:"timestamp"`
-	Namespaces []string              `json:"namespaces"`
-	Resources  map[string][]Resource `json:"resources"`
-}
-
-// Resource représente une ressource Kubernetes avec ses données.
-type Resource struct {
-	Name      string                 `json:"name"`
-	Namespace string                 `json:"namespace"`
-	Kind      string                 `json:"kind"`
-	Data      map[string]interface{} `json:"data"`
-}
-
-func backupNamespaces(ctx context.Context, clientset *kubernetes.Clientset, state *ClusterState, logger *utils.Logger) error {
-	namespaces, err := clientset.CoreV1().Namespaces().List(ctx, metav1.ListOptions{})
+	clientset, err := kubernetes.GetKubernetesClient(config.Kubernetes.KubeConfig)
 	if err != nil {
-		return fmt.Errorf("error retrieving namespaces: %w", err)
+		logger.Error(fmt.Sprintf("Failed to create Kubernetes client: %v", err))
+		return "", err
 	}
 
-	for _, ns := range namespaces.Items {
-		state.Namespaces = append(state.Namespaces, ns.Name)
-	}
-	logger.Info(fmt.Sprintf("Namespaces backed up: %v", state.Namespaces))
-	return nil
-}
-
-// On modifie la signature de saveResources pour utiliser un type générique
-func saveResources[T any](ctx context.Context, listFunc func(context.Context, metav1.ListOptions) (*T, error), kind, namespace string, state *ClusterState, logger *utils.Logger) {
-	resources, err := listFunc(ctx, metav1.ListOptions{})
+	namespaces, err := kubernetes.GetFilteredNamespaces(ctx, clientset, config.Kubernetes.Volumes.Excludes)
 	if err != nil {
-		logger.Error(fmt.Sprintf("Error retrieving %s in namespace %s: %v", kind, namespace, err))
-		return
+		logger.Error(fmt.Sprintf("Failed to list namespaces: %v", err))
+		return "", err
 	}
 
-	items, err := extractItems(resources)
-	if err != nil {
-		logger.Error(fmt.Sprintf("Error extracting items for %s: %v", kind, err))
-		return
-	}
+	for _, namespace := range namespaces {
+		logger.Info(fmt.Sprintf("Processing namespace: %s", namespace))
 
-	for _, item := range items {
-		resource := Resource{
-			Name:      extractName(item),
-			Namespace: namespace,
-			Kind:      kind,
-			Data:      objectToMap(item, logger),
+		pvcs, err := kubernetes.ListPVCs(ctx, clientset, namespace)
+		if err != nil {
+			logger.Error(fmt.Sprintf("Failed to list PVCs in namespace %s: %v", namespace, err))
+			continue
 		}
-		state.Resources[kind] = append(state.Resources[kind], resource)
+
+		for _, pvc := range pvcs {
+			volumeBackupDir := filepath.Join(baseVolumesDir, fmt.Sprintf("%s_%s", pvc.Name, pvc.Spec.VolumeName))
+			if err := os.MkdirAll(volumeBackupDir, 0755); err != nil {
+				logger.Error(fmt.Sprintf("Failed to create directory for PVC %s: %v", pvc.Name, err))
+				continue
+			}
+
+			if err := saveToYAML(pvc, filepath.Join(volumeBackupDir, "pvc.yaml")); err != nil {
+				logger.Error(fmt.Sprintf("Failed to save PVC config for %s: %v", pvc.Name, err))
+				continue
+			}
+
+			pv, err := kubernetes.GetPV(ctx, clientset, pvc.Spec.VolumeName)
+			if err == nil {
+				if err := saveToYAML(pv, filepath.Join(volumeBackupDir, "pv.yaml")); err != nil {
+					logger.Error(fmt.Sprintf("Failed to save PV config for %s: %v", pvc.Spec.VolumeName, err))
+				}
+			} else {
+				logger.Error(fmt.Sprintf("Failed to retrieve PV %s: %v", pvc.Spec.VolumeName, err))
+			}
+
+			targetPod, targetMountPath, err := kubernetes.FindPodUsingPVC(ctx, clientset, namespace, pvc.Name)
+			if err != nil {
+				logger.Error(fmt.Sprintf("Failed to find pod using PVC %s: %v", pvc.Name, err))
+				continue
+			}
+
+			logger.Info(fmt.Sprintf("Found pod %s using PVC %s with mount path %s", targetPod, pvc.Name, targetMountPath))
+
+			tarFilePath := filepath.Join(volumeBackupDir, fmt.Sprintf("%s.tar", pvc.Name))
+			if err := kubernetes.CopyPVCData(ctx, config.Kubernetes.KubeConfig, namespace, targetPod, targetMountPath, tarFilePath); err != nil {
+				logger.Error(fmt.Sprintf("Failed to backup PVC data for %s: %v", pvc.Name, err))
+				continue
+			}
+
+			logger.Info(fmt.Sprintf("Successfully backed up PVC %s to tar file: %s", pvc.Name, tarFilePath))
+		}
 	}
-	logger.Debug(fmt.Sprintf("Backed up %d %s in namespace %s", len(items), kind, namespace))
+
+	logger.Info(fmt.Sprintf("PVC data backup completed. Backup directory: %s", baseVolumesDir))
+	return baseVolumesDir, nil
 }
 
-// Modification de la fonction backupNamespacedResources pour utiliser le type générique
-func backupNamespacedResources(ctx context.Context, clientset *kubernetes.Clientset, state *ClusterState, logger *utils.Logger) {
-	for _, ns := range state.Namespaces {
-		saveResources(ctx, clientset.CoreV1().Pods(ns).List, "pods", ns, state, logger)
-		saveResources(ctx, clientset.CoreV1().Services(ns).List, "services", ns, state, logger)
-		saveResources(ctx, clientset.CoreV1().ConfigMaps(ns).List, "configmaps", ns, state, logger)
-		saveResources(ctx, clientset.CoreV1().Secrets(ns).List, "secrets", ns, state, logger)
-		// saveResources(ctx, clientset.CoreV1().PersistentVolumeClaims(ns).List, "persistentvolumeclaims", ns, state, logger)
+func BackupKube(name string, config utils.Backup) ([]string, error) {
+	logger := utils.LoggerFunc()
+	logger.Info(fmt.Sprintf("Starting Kubernetes backup for %s", name))
 
-		saveResources(ctx, clientset.AppsV1().Deployments(ns).List, "deployments", ns, state, logger)
-		saveResources(ctx, clientset.AppsV1().StatefulSets(ns).List, "statefulsets", ns, state, logger)
-		saveResources(ctx, clientset.AppsV1().DaemonSets(ns).List, "daemonsets", ns, state, logger)
-		saveResources(ctx, clientset.BatchV1().Jobs(ns).List, "jobs", ns, state, logger)
-		saveResources(ctx, clientset.RbacV1().Roles(ns).List, "roles", ns, state, logger)
-		saveResources(ctx, clientset.RbacV1().RoleBindings(ns).List, "rolebindings", ns, state, logger)
+	baseBackupDir := filepath.Join(config.Path.Local, name+"-kubernetes-all-"+time.Now().Format("20060102_150405"))
+	clusterBackupDir := filepath.Join(baseBackupDir, "Cluster")
+	volumesBackupDir := filepath.Join(baseBackupDir, "Volumes")
+
+	if err := os.MkdirAll(clusterBackupDir, 0755); err != nil {
+		return nil, fmt.Errorf("failed to create cluster backup directory: %w", err)
 	}
+	if err := os.MkdirAll(volumesBackupDir, 0755); err != nil {
+		return nil, fmt.Errorf("failed to create volumes backup directory: %w", err)
+	}
+
+	if config.Kubernetes.Volumes.Enabled {
+		if _, err := BackupPVCData(name, config, volumesBackupDir); err != nil {
+			logger.Error(fmt.Sprintf("Failed to backup PVC data: %v", err))
+			return nil, err
+		}
+		logger.Debug(fmt.Sprintf("Backup of PVC data completed for %s", name))
+	}
+
+	if config.Kubernetes.Cluster.Backup == "auto" {
+		if _, err := BackupClusterState(name, config, clusterBackupDir); err != nil {
+			logger.Error(fmt.Sprintf("Failed to backup cluster state: %v", err))
+			return nil, err
+		}
+		logger.Debug(fmt.Sprintf("Backup of cluster state completed for %s", name))
+	}
+
+	logger.Info(fmt.Sprintf("Kubernetes backup completed for %s. Backup directory: %s", name, baseBackupDir))
+	return []string{baseBackupDir}, nil
 }
 
-// Modification de la fonction backupClusterResources pour utiliser le type générique
-func backupClusterResources(ctx context.Context, clientset *kubernetes.Clientset, state *ClusterState, logger *utils.Logger) {
-	// saveResources(ctx, clientset.CoreV1().Nodes().List, "nodes", "", state, logger)
-	saveResources(ctx, clientset.CoreV1().PersistentVolumes().List, "persistentvolumes", "", state, logger)
-	// saveResources(ctx, clientset.StorageV1().StorageClasses().List, "storageclasses", "", state, logger)
+func BackupClusterState(name string, config utils.Backup, clusterBackupDir string) (string, error) {
+	logger := utils.LoggerFunc()
+	logger.Info(fmt.Sprintf("Starting cluster state backup for %s", name))
+
+	if config.Kubernetes == nil || config.Kubernetes.Cluster.Backup != "auto" {
+		return "", fmt.Errorf("cluster backup is not enabled")
+	}
+
+	backupFile := filepath.Join(clusterBackupDir, "cluster-state.json")
+	ctx := context.TODO()
+	clientset, err := kubernetes.GetKubernetesClient(config.Kubernetes.KubeConfig)
+	if err != nil {
+		logger.Error(fmt.Sprintf("Failed to create Kubernetes client: %v", err))
+		return "", err
+	}
+
+	state, err := kubernetes.BackupClusterState(ctx, clientset, config.Kubernetes.Cluster.Excludes, logger)
+	if err != nil {
+		logger.Error(fmt.Sprintf("Failed to backup cluster state: %v", err))
+		return "", err
+	}
+
+	if err := saveToFile(state, backupFile); err != nil {
+		logger.Error(fmt.Sprintf("Failed to save cluster state: %v", err))
+		return "", err
+	}
+
+	logger.Info(fmt.Sprintf("Cluster state backup completed successfully. File saved at: %s", backupFile))
+	return backupFile, nil
 }
 
-func saveToFile(state ClusterState, backupFile string, logger *utils.Logger) error {
+func saveToFile(state kubernetes.ClusterState, backupFile string) error {
 	jsonData, err := json.MarshalIndent(state, "", "    ")
 	if err != nil {
 		return fmt.Errorf("error serializing state to JSON: %w", err)
@@ -156,43 +165,10 @@ func saveToFile(state ClusterState, backupFile string, logger *utils.Logger) err
 	return nil
 }
 
-func extractItems(obj interface{}) ([]interface{}, error) {
-	data, err := json.Marshal(obj)
+func saveToYAML(obj interface{}, filePath string) error {
+	data, err := yaml.Marshal(obj)
 	if err != nil {
-		return nil, err
+		return fmt.Errorf("error marshaling object to YAML: %w", err)
 	}
-
-	var result struct {
-		Items []interface{} `json:"items"`
-	}
-	if err := json.Unmarshal(data, &result); err != nil {
-		return nil, err
-	}
-	return result.Items, nil
-}
-
-func extractName(obj interface{}) string {
-	data, _ := json.Marshal(obj)
-	var result struct {
-		Metadata struct {
-			Name string `json:"name"`
-		} `json:"metadata"`
-	}
-	_ = json.Unmarshal(data, &result)
-	return result.Metadata.Name
-}
-
-func objectToMap(obj interface{}, logger *utils.Logger) map[string]interface{} {
-	data, err := json.Marshal(obj)
-	if err != nil {
-		logger.Error(fmt.Sprintf("Error converting object to map: %v", err))
-		return nil
-	}
-
-	var result map[string]interface{}
-	if err := json.Unmarshal(data, &result); err != nil {
-		logger.Error(fmt.Sprintf("Error deserializing object: %v", err))
-		return nil
-	}
-	return result
+	return os.WriteFile(filePath, data, 0644)
 }

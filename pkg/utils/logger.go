@@ -16,10 +16,18 @@ type Logger struct {
 
 // NewLogger creates a new logger that writes to a specified file.
 func newLogger() (*Logger, error) {
+	configServer, err := GetConfigServer()
+	if err != nil {
+		return nil, fmt.Errorf("failed to load server configuration: %v", err)
+	}
 	// Déterminer le chemin du fichier de log
 	var logFilePath string
 	if GetEnv[string]("LOG_FILE") == "" {
-		logFilePath = "logs/mini-backup.log"
+		if configServer.Server.Log == "" {
+			logFilePath = "logs/mini-backup.log"
+		} else {
+			logFilePath = configServer.Server.Log
+		}
 	} else {
 		logFilePath = GetEnv[string]("LOG_FILE")
 	}
@@ -35,8 +43,16 @@ func newLogger() (*Logger, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to open log file: %v", err)
 	}
+	var logLevel string
+	if GetEnv[string]("LOG_LEVEL") == "" {
+		if configServer.Server.Debug {
+			logLevel = "debug"
+		}
+	} else {
+		logLevel = GetEnv[string]("LOG_LEVEL")
+	}
 
-	if GetEnv[string]("LOG_LEVEL") == "debug" {
+	if logLevel == "debug" {
 		return &Logger{
 			infoLog:  log.New(os.Stdout, "INFO: ", log.Ldate|log.Ltime|log.Lshortfile),
 			errorLog: log.New(os.Stdout, "ERROR: ", log.Ldate|log.Ltime|log.Lshortfile),
@@ -64,14 +80,14 @@ func LoggerFunc() *Logger {
 // Info logs informational messages with an optional source.
 func (l *Logger) Info(msg string, source ...string) {
 	message := formatLogMessage(msg, source)
-	fmt.Println("🚀 DEV CONSOLE 🚀 -- " + message)
+	fmt.Println("🚀 MINIBACKUP CONSOLE 🚀 -- " + message)
 	l.infoLog.Println(message)
 }
 
 // Error logs error messages with an optional source.
 func (l *Logger) Error(msg string, source ...string) {
 	message := formatLogMessage(msg, source)
-	fmt.Println("🚀 DEV CONSOLE 🚀 -- " + message)
+	fmt.Println("🚀 MINIBACKUP CONSOLE 🚀 -- " + message)
 	l.errorLog.Println(message)
 }
 
@@ -79,7 +95,7 @@ func (l *Logger) Error(msg string, source ...string) {
 func (l *Logger) Debug(msg string, source ...string) {
 	if GetEnv[string]("LOG_LEVEL") == "debug" {
 		message := formatLogMessage(msg, source)
-		fmt.Println("🚀 DEV CONSOLE 🚀 -- " + message)
+		fmt.Println("🚀 MINIBACKUP CONSOLE 🚀 -- " + message)
 		l.debugLog.Println(message)
 	}
 }

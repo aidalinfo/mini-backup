@@ -1,76 +1,110 @@
 package restore
 
 import (
+	"encoding/json"
 	"fmt"
 	"mini-backup/pkg/utils"
 	"os"
 	"os/exec"
-	"strings"
+	"path/filepath"
 )
 
-// RestoreMySQL performs a MySQL restore for one or multiple databases.
-func RestoreMySQL(backupFile string, config utils.Backup) error {
+// RestoreMySQL restaure une ou plusieurs bases de données à partir d'un dossier de sauvegarde.
+func RestoreMySQL(name string, config utils.Backup, backupDir string, params any) error {
 	logger := utils.LoggerFunc()
+	logger.Info(fmt.Sprintf("Starting MySQL restore from directory: %s", backupDir))
 
-	logger.Info(fmt.Sprintf("Starting MySQL restore from file: %s", backupFile))
-
-	// Vérifie que la configuration est valide
+	// Vérifie la configuration MySQL
 	if config.Mysql.Host == "" || config.Mysql.User == "" {
 		return fmt.Errorf("invalid MySQL configuration: missing required fields (Host: %s, User: %s)", config.Mysql.Host, config.Mysql.User)
 	}
 
-	// Vérifie si le fichier de sauvegarde existe
-	if _, err := os.Stat(backupFile); os.IsNotExist(err) {
-		return fmt.Errorf("backup file not found: %s", backupFile)
+	// Vérifie que le dossier de backup existe
+	if _, err := os.Stat(backupDir); os.IsNotExist(err) {
+		return fmt.Errorf("backup directory not found: %s", backupDir)
 	}
 
-	// Restaurer chaque base de données
-	for _, database := range config.Mysql.Databases {
-		err := restoreFunc(backupFile, config, database, logger)
+	// Identifier le fichier "all_databases.sql" s'il existe
+	allDatabasesFile := filepath.Join(backupDir, fmt.Sprintf("%s-all_databases.sql", name))
+	hasAllDatabasesBackup := fileExists(allDatabasesFile)
+
+	// Bases de données à restaurer
+	var databasesToRestore []string
+
+	// Lecture des paramètres JSON (s'il y en a)
+	if params != nil && params != "" {
+		jsonData, err := json.Marshal(params)
 		if err != nil {
-			logger.Error(fmt.Sprintf("Failed to restore database %s from file %s: %v", database, backupFile, err))
-			return err
+			return fmt.Errorf("failed to parse restore parameters: %w", err)
 		}
-		logger.Info(fmt.Sprintf("Successfully restored database: %s", database))
+
+		var requestData struct {
+			Databases []string `json:"databases"`
+		}
+		if err := json.Unmarshal(jsonData, &requestData); err != nil {
+			return fmt.Errorf("failed to decode JSON restore parameters: %w", err)
+		}
+
+		// Utilise les bases demandées via JSON
+		if len(requestData.Databases) > 0 {
+			databasesToRestore = requestData.Databases
+		}
 	}
 
-	logger.Info(fmt.Sprintf("Successfully restored all databases from file: %s", backupFile))
+	// Si aucun paramètre spécifique, utiliser la config
+	if len(databasesToRestore) == 0 {
+		if config.Mysql.All {
+			// Restaurer toute la BDD si le fichier "all_databases.sql" existe
+			if hasAllDatabasesBackup {
+				return restoreAllDatabases(allDatabasesFile, config, logger)
+			}
+			return fmt.Errorf("all_databases.sql file not found in %s", backupDir)
+		} else {
+			// Sinon, restaurer uniquement les bases listées dans la config
+			databasesToRestore = config.Mysql.Databases
+		}
+	}
+
+	// Restaurer chaque base de données spécifiée
+	for _, database := range databasesToRestore {
+		dbBackupFile := filepath.Join(backupDir, fmt.Sprintf("%s-%s.sql", name, database))
+
+		if fileExists(dbBackupFile) {
+			// Restaurer une base de données avec son propre fichier SQL
+			err := restoreSingleDatabase(dbBackupFile, config, database, logger)
+			if err != nil {
+				logger.Error(fmt.Sprintf("Failed to restore database %s: %v", database, err))
+				return err
+			}
+		} else if hasAllDatabasesBackup {
+			// Si "all_databases.sql" est présent, restaurer uniquement la base demandée
+			err := restoreDatabaseFromAllDatabases(allDatabasesFile, config, database, logger)
+			if err != nil {
+				logger.Error(fmt.Sprintf("Failed to restore database %s from all_databases.sql: %v", database, err))
+				return err
+			}
+		} else {
+			logger.Error(fmt.Sprintf("No backup found for database: %s", database))
+		}
+	}
+
+	logger.Info("MySQL restore completed successfully.")
 	return nil
 }
 
-// restoreFunc executes the mysql command to restore a single database.
-func restoreFunc(backupFile string, config utils.Backup, database string, logger *utils.Logger) error {
-	logger.Info(fmt.Sprintf("Restoring database: %s from file: %s", database, backupFile))
+// restoreAllDatabases restaure l'ensemble des bases de données
+func restoreAllDatabases(backupFile string, config utils.Backup, logger *utils.Logger) error {
+	logger.Info(fmt.Sprintf("Restoring all databases from backup file: %s", backupFile))
 
-	// Commande mysql
 	cmd := exec.Command(
 		"mysql",
 		"-h", config.Mysql.Host,
 		"-P", config.Mysql.Port,
 		"-u", config.Mysql.User,
 		fmt.Sprintf("-p%s", config.Mysql.Password),
-		database, // Sélectionner la base de données spécifique
+		"--set-gtid-purged=OFF",  
 	)
 
-	// Vérifie si le fichier contient des instructions USE DATABASE
-	fileContent, err := os.ReadFile(backupFile)
-	if err != nil {
-		return fmt.Errorf("failed to read backup file %s: %w", backupFile, err)
-	}
-	if !strings.Contains(string(fileContent), "USE") {
-		// Ajouter une instruction USE pour s'assurer que la base de données est sélectionnée
-		tempFile := strings.Replace(backupFile, ".sql", fmt.Sprintf("-%s.sql", database), 1)
-		logger.Info(fmt.Sprintf("Creating temporary file with database context: %s", tempFile))
-
-		err = os.WriteFile(tempFile, append([]byte(fmt.Sprintf("USE `%s`;\n", database)), fileContent...), 0644)
-		if err != nil {
-			return fmt.Errorf("failed to create temporary backup file: %w", err)
-		}
-		backupFile = tempFile
-		defer os.Remove(tempFile) // Nettoyer le fichier temporaire après restauration
-	}
-
-	// Rediriger l'entrée de la commande à partir du fichier de sauvegarde
 	file, err := os.Open(backupFile)
 	if err != nil {
 		return fmt.Errorf("failed to open backup file %s: %w", backupFile, err)
@@ -79,13 +113,84 @@ func restoreFunc(backupFile string, config utils.Backup, database string, logger
 
 	cmd.Stdin = file
 
-	// Exécuter la commande
+	// Exécuter la restauration
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		logger.Error(fmt.Sprintf("MySQL restore failed: %s", string(output)))
 		return fmt.Errorf("mysql restore failed: %w", err)
 	}
 
-	logger.Info(fmt.Sprintf("Restore completed successfully for database: %s from file: %s", database, backupFile))
+	logger.Info("Successfully restored all databases.")
 	return nil
+}
+
+// restoreDatabaseFromAllDatabases restaure une base spécifique à partir de all_databases.sql
+func restoreDatabaseFromAllDatabases(backupFile string, config utils.Backup, database string, logger *utils.Logger) error {
+	logger.Info(fmt.Sprintf("Restoring database %s from all_databases.sql", database))
+
+	cmd := exec.Command(
+		"mysql",
+		"-h", config.Mysql.Host,
+		"-P", config.Mysql.Port,
+		"-u", config.Mysql.User,
+		fmt.Sprintf("-p%s", config.Mysql.Password),
+		"--one-database", database,
+		"--set-gtid-purged=OFF",  
+	)
+
+	file, err := os.Open(backupFile)
+	if err != nil {
+		return fmt.Errorf("failed to open all_databases backup file %s: %w", backupFile, err)
+	}
+	defer file.Close()
+
+	cmd.Stdin = file
+
+	// Exécuter la restauration
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		logger.Error(fmt.Sprintf("MySQL restore failed for database %s: %s", database, string(output)))
+		return fmt.Errorf("mysql restore failed: %w", err)
+	}
+
+	logger.Info(fmt.Sprintf("Successfully restored database %s from all_databases.sql", database))
+	return nil
+}
+
+// restoreSingleDatabase restaure une seule base de données depuis un fichier SQL dédié
+func restoreSingleDatabase(backupFile string, config utils.Backup, database string, logger *utils.Logger) error {
+	logger.Info(fmt.Sprintf("Restoring database: %s from file: %s", database, backupFile))
+
+	cmd := exec.Command(
+		"mysql",
+		"-h", config.Mysql.Host,
+		"-P", config.Mysql.Port,
+		"-u", config.Mysql.User,
+		fmt.Sprintf("-p%s", config.Mysql.Password),
+		database,
+	)
+
+	file, err := os.Open(backupFile)
+	if err != nil {
+		return fmt.Errorf("failed to open backup file %s: %w", backupFile, err)
+	}
+	defer file.Close()
+
+	cmd.Stdin = file
+
+	// Exécuter la restauration
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		logger.Error(fmt.Sprintf("MySQL restore failed: %s", string(output)))
+		return fmt.Errorf("mysql restore failed: %w", err)
+	}
+
+	logger.Info(fmt.Sprintf("Restore completed successfully for database: %s", database))
+	return nil
+}
+
+// fileExists vérifie si un fichier existe
+func fileExists(filename string) bool {
+	_, err := os.Stat(filename)
+	return err == nil
 }

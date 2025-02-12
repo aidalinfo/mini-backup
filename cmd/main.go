@@ -55,21 +55,21 @@ func main() {
 			logger.Info(fmt.Sprintf("Scheduling standard backup for %s: %s", name, backupConfig.Schedule.Standard), utils.Bootstrap_server)
 			err := scheduler.AddJob(backupConfig.Schedule.Standard, func() {
 				logger.Info(fmt.Sprintf("Executing standard backup for %s", name), utils.Bootstrap_server)
-				backup.CoreBackup(name)
+				backup.CoreBackup(name, false)
 			})
 			if err != nil {
 				logger.Error(fmt.Sprintf("Failed to schedule standard backup for %s: %v", name, err), utils.Bootstrap_server)
 			}
 		} else {
 			logger.Info(fmt.Sprintf("No schedule found for %s, executing backup immediately", name), utils.Bootstrap_server)
-			backup.CoreBackup(name)
+			backup.CoreBackup(name, false)
 		}
 
 		if backupConfig.Schedule.Glacier != "" {
 			logger.Info(fmt.Sprintf("Scheduling Glacier backup for %s: %s", name, backupConfig.Schedule.Glacier), utils.Bootstrap_server)
 			err := scheduler.AddJob(backupConfig.Schedule.Glacier, func() {
 				logger.Info(fmt.Sprintf("Executing Glacier backup for %s", name), utils.Bootstrap_server)
-				// Placeholder: Replace this log with the actual Glacier backup logic
+				backup.CoreBackup(name, true)
 			})
 			if err != nil {
 				logger.Error(fmt.Sprintf("Failed to schedule Glacier backup for %s: %v", name, err), utils.Bootstrap_server)

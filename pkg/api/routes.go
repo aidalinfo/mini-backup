@@ -10,7 +10,7 @@ import (
 func SetupRoutes(app *fiber.App) {
 	api := app.Group("/api")
 	// Route pour récupérer la configuration d'un backup
-	api.Get("/backup", handlers.GetBackupConfig)
+	// api.Get("/backup", handlers.GetBackupConfig)
 	// Route pour lister les backups
 	api.Get("/backups", handlers.ListBackups)
 	// Route pour obtenir les backups détaillés
@@ -18,8 +18,12 @@ func SetupRoutes(app *fiber.App) {
 	api.Post("/restore/:name", handlers.RestoreBackup)
 	// Route pour lister les fichiers d'un backup
 	api.Get("/backups/:name/files", handlers.ListFilesForBackup)
-
+	// api.Get("/backups/:name/list", handlers.ListBackupDetails)
+	api.Get("/download/:file", handlers.DownloadBackup)
 	api.Get("/server/config", handlers.GetConfigServer)
 
 	api.Get("/server/backups/list", handlers.ListFilesForAllBackup)
+	api.Get("/backups/last-logs", handlers.LastBackupsFromLogs)
+	api.Get("/backup/next-backup", handlers.GetNextBackup)
+	api.Get("/server/rstorage/count", handlers.GetRStorageCount)
 }

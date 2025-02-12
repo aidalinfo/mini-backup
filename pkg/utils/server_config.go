@@ -32,6 +32,7 @@ type SecretManager struct {
 type RStorageConfig struct {
 	Endpoint   string `yaml:"endpoint"`
 	BucketName string `yaml:"bucket_name"`
+	PathStyle bool `yaml:"pathStyle"`
 	AccessKey  string `yaml:"access_key"`
 	SecretKey  string `yaml:"secret_key"`
 	Region     string `yaml:"region"`
@@ -43,11 +44,11 @@ func GetConfigServer() (*ServerConfig, error) {
 	if configPath == "" {
 		configPath = "config/server.yaml"
 	}
-	logger.Info(fmt.Sprintf("Loading config file: %s", configPath), source_utils)
+	// logger.Info(fmt.Sprintf("Loading config file: %s", configPath), source_utils)
 	// Charger le fichier YAML
 	file, err := os.Open(configPath)
 	if err != nil {
-		logger.Error(fmt.Sprintf("Failed to open config file: %s", err), source_utils)
+		// logger.Error(fmt.Sprintf("Failed to open config file: %s", err), source_utils)
 		return nil, fmt.Errorf("failed to open config file: %w", err)
 	}
 	defer file.Close()
@@ -55,7 +56,7 @@ func GetConfigServer() (*ServerConfig, error) {
 	var config ServerConfig
 	decoder := yaml.NewDecoder(file)
 	if err := decoder.Decode(&config); err != nil {
-		logger.Error(fmt.Sprintf("Failed to decode YAML: %s", err), source_utils)
+		// logger.Error(fmt.Sprintf("Failed to decode YAML: %s", err), source_utils)
 		return nil, fmt.Errorf("failed to decode YAML: %w", err)
 	}
 
@@ -71,20 +72,17 @@ func GetConfigServer() (*ServerConfig, error) {
 func resolveEnvVariables(config *ServerConfig) error {
 	// Regex pour détecter les références comme ${{ENV_VAR}}
 	envRegex := regexp.MustCompile(`\${{\s*(\w+)\s*}}`)
-
 	resolve := func(value string) string {
-		logger.Debug(fmt.Sprintf("Resolving value: %s", value), source_utils)
-		return envRegex.ReplaceAllStringFunc(value, func(match string) string {
-			matches := envRegex.FindStringSubmatch(match)
-			logger.Debug(fmt.Sprintf("Match: %s", matches), source_utils)
-			if len(matches) == 2 {
-				if envValue := GetEnv[string](matches[1]); envValue != "" {
-					return envValue
-				}
-			}
-			return match // Garder la valeur originale si la variable d'environnement n'existe pas
-		})
-	}
+    return envRegex.ReplaceAllStringFunc(value, func(match string) string {
+        matches := envRegex.FindStringSubmatch(match)
+        if len(matches) == 2 {
+            if envValue := GetEnv[string](matches[1]); envValue != "" {
+                return envValue
+            }
+        }
+        return match
+    })
+}
 
 	// Résolution pour les paramètres du gestionnaire de secrets
 	for key, sm := range config.SecretManager {
