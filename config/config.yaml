@@ -1,82 +1,82 @@
 backups:
-  minio-data:
-    type: s3
-    s3:
-      all: true
-      endpoint: "http://localhost:9002"
-      region: "fr-par"
-      ACCESS_KEY: "minioadmin"
-      SECRET_KEY: "miniopassword"
-      pathStyle: true
-    path:
-      local: "./backups"
-      s3: "backup/minio-data"
-    retention:
-      standard:
-        days: 14
-    schedule:
-      standard: "*/2 * * * *"
-  sqlite:
-    type: sqlite
-    sqlite:
-      paths: 
-        - "./datatest/sqlite.db"
-      credentials:
-        user: "root"
-        password: "example"
-    path:
-      local: "./backups"
-      s3: "minio-data"
-    retention:
-      standard:
-        days: 14
-    schedule:
-      standard: "*/59 * * * *"   
-
-  github:
-    type: github
-    github:
-      token: "example"
-      org: 
-        - killian
-        - aidalinfo
-    path:
-      local: "./backups"
-      s3: "backup/github"
-    retention:
-      standard: 
-        days: 14
-    schedule:
-      standard: "*/2 * * * *"
-  # glpi-file:
-  #   type: folder
-  #   folder: [
-  #     "/home/killian/dev/aidalinfo/backup-tool-go/glpi/data",
-  #   ]
+  # minio-data:
+  #   type: s3
+  #   s3:
+  #     all: true
+  #     endpoint: "http://localhost:9002"
+  #     region: "fr-par"
+  #     ACCESS_KEY: "minioadmin"
+  #     SECRET_KEY: "miniopassword"
+  #     pathStyle: true
   #   path:
   #     local: "./backups"
-  #     s3: "backup/glpi-dev/folder"
+  #     s3: "backup/minio-data"
   #   retention:
-  #     standard: 
+  #     standard:
   #       days: 14
   #   schedule:
-  #     standard: "*/60 * * * *"
-  #     glacier: "0 18 * * 5"
-  # mongo:
-  #   type: mongo
-  #   mongo: 
-  #     host: "localhost"
-  #     port: "27018"
-  #     user: "root"
-  #     password: "example"
-  #     ssl: false
+  #     standard: "*/59 * * * *"
+  # sqlite:
+  #   type: sqlite
+  #   sqlite:
+  #     paths: 
+  #       - "./datatest/sqlite.db"
+  #     credentials:
+  #       user: "root"
+  #       password: "example"
   #   path:
   #     local: "./backups"
-  #     s3: "backup/mongo/mongo"
+  #     s3: "minio-data"
+  #   retention:
+  #     standard:
+  #       days: 14
+  #   schedule:
+  #     standard: "*/59 * * * *"   
+
+  # github:
+  #   type: github
+  #   github:
+  #     token: "example"
+  #     org: 
+  #       - killian
+  #       - aidalinfo
+  #   path:
+  #     local: "./backups"
+  #     s3: "backup/github"
   #   retention:
   #     standard: 
   #       days: 14
-  #     glacier:
-  #       days: 365
   #   schedule:
   #     standard: "*/2 * * * *"
+  # # glpi-file:
+  # #   type: folder
+  # #   folder: [
+  # #     "/home/killian/dev/aidalinfo/backup-tool-go/glpi/data",
+  # #   ]
+  # #   path:
+  # #     local: "./backups"
+  # #     s3: "backup/glpi-dev/folder"
+  # #   retention:
+  # #     standard: 
+  # #       days: 14
+  # #   schedule:
+  # #     standard: "*/60 * * * *"
+  # #     glacier: "0 18 * * 5"
+  # # mongo:
+  # #   type: mongo
+  # #   mongo: 
+  # #     host: "localhost"
+  # #     port: "27018"
+  # #     user: "root"
+  # #     password: "example"
+  # #     ssl: false
+  # #   path:
+  # #     local: "./backups"
+  # #     s3: "backup/mongo/mongo"
+  # #   retention:
+  # #     standard: 
+  # #       days: 14
+  # #     glacier:
+  # #       days: 365
+  # #   schedule:
+  # #     standard: "*/2 * * * *"

@@ -18,7 +18,11 @@ func main() {
 			return
 		}
 	}
-
+	modules, err := utils.LoadModules()
+	if err != nil {
+		logger.Error(fmt.Sprintf("Failed to load modules: %v", err))
+	}
+	logger.Info(fmt.Sprintf("Loaded modules: %v", modules), utils.Bootstrap_server)
 	serverConfig, err := utils.GetConfigServer()
 	if err != nil {
 		logger.Error(fmt.Sprintf("Failed to load configuration: %v", err))

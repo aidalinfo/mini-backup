@@ -1,0 +1,5 @@
+layout-module:
+  bin: module-mysql
+  version: 0.0.1
+  type: mysql
+  enable: true

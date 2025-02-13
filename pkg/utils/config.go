@@ -1,9 +1,11 @@
 package utils
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -36,7 +38,7 @@ type Mongo struct {
 }
 
 type Mysql struct {
-	All bool `yaml:"all,omitempty"`
+	All       bool     `yaml:"all,omitempty"`
 	Databases []string `yaml:"databases,omitempty"`
 	Host      string   `yaml:"host,omitempty"`
 	Port      string   `yaml:"port,omitempty"`
@@ -86,14 +88,14 @@ type S3config struct {
 	All        bool     `yaml:"all"`
 	Bucket     []string `yaml:"bucket"`
 	Endpoint   string   `yaml:"endpoint"`
-	PathStyle bool `yaml:"pathStyle"`
+	PathStyle  bool     `yaml:"pathStyle"`
 	Region     string   `yaml:"region"`
 	ACCESS_KEY string   `yaml:"ACCESS_KEY"`
 	SECRET_KEY string   `yaml:"SECRET_KEY"`
 }
 
 type Sqlite struct {
-	Paths []string `yaml:"paths"`
+	Paths       []string `yaml:"paths"`
 	credentials struct {
 		user     string `yaml:"user"`
 		password string `yaml:"password"`
@@ -178,4 +180,52 @@ func GetConfig() (*BackupConfig, error) {
 	}
 
 	return mergedConfig, nil
+}
+
+func BuildBackupArgs(backup Backup, glacierMode bool) (string, error) {
+	result := make(map[string]interface{})
+
+	// Champs communs
+	result["path"] = backup.Path.Local
+	// Exemple de calcul pour Glaciermode (à adapter selon votre logique)
+	result["Glaciermode"] = glacierMode
+
+	// Liste des champs à exclure (ceux qui ne sont pas des modules)
+	exclude := map[string]bool{
+		"Type":      true,
+		"Folder":    true,
+		"S3":        true,
+		"Path":      true,
+		"Retention": true,
+		"Schedule":  true,
+	}
+
+	v := reflect.ValueOf(backup)
+	t := reflect.TypeOf(backup)
+
+	// Parcours des champs de la struct Backup
+	for i := 0; i < v.NumField(); i++ {
+		field := t.Field(i)
+		fieldName := field.Name
+
+		// On ignore les champs non liés aux modules
+		if _, ok := exclude[fieldName]; ok {
+			continue
+		}
+
+		f := v.Field(i)
+		// On s'intéresse aux champs définis comme pointeurs et non nil (ex: *Mysql, *Mongo, etc.)
+		if f.Kind() == reflect.Ptr && !f.IsNil() {
+			// On convertit le nom du champ en minuscule pour la clé JSON
+			key := strings.ToLower(fieldName)
+			result[key] = f.Interface()
+		}
+	}
+
+	jsonData, err := json.Marshal(result)
+	if err != nil {
+		return "", err
+	}
+	getLogger().Info(fmt.Sprintf("JSON backup config: %s", string(jsonData)), source_utils)
+	return string(jsonData), nil
 }

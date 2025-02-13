@@ -47,7 +47,6 @@ func BackupMySQL(name string, config utils.Backup) ([]string, error) {
 			dumping = append(dumping, result)
 		}
 	}
-
 	return []string{parentDir}, nil
 }
 
