@@ -1,9 +1,11 @@
 package backup
 
 import (
+	"encoding/json"
 	"fmt"
 	"mini-backup/pkg/utils"
 	"os"
+	"os/exec"
 	"path/filepath"
 )
 
@@ -69,6 +71,91 @@ func deleteFile(path string) error {
 	return nil
 }
 
+// func CoreBackup(name string, glacierMode bool) error {
+// 	logger.Info(fmt.Sprintf("Starting backup for: %s", name))
+// 	config, err := utils.GetConfig()
+// 	if err != nil {
+// 		logger.Error(fmt.Sprintf("Failed to load config: %v", err))
+// 		return err
+// 	}
+
+// 	defer func() {
+// 		if r := recover(); r != nil {
+// 			logger.Error(fmt.Sprintf("Panic occurred during backup for %s: %v", name, r))
+// 		}
+// 	}()
+
+// 	switch config.Backups[name].Type {
+// 	case "mysql":
+// 		logger.Info(fmt.Sprintf("Detected MySQL backup for %s", name))
+// 		result, err := BackupMySQL(name, config.Backups[name])
+// 		if err != nil {
+// 			logger.Error(fmt.Sprintf("Failed to backup MySQL for %s: %v", name, err))
+// 			return err
+// 		}
+// 		logger.Info(fmt.Sprintf("Successfully backed up MySQL for %s: %v", name, result))
+// 		backupProcess(result, config.Backups[name], name, glacierMode)
+// 		return nil
+// 	case "folder":
+// 		logger.Info(fmt.Sprintf("Detected folder backup for %s", name))
+// 		result, err := CopyFolder(name, config.Backups[name])
+// 		if err != nil {
+// 			logger.Error(fmt.Sprintf("Failed to backup folder for %s: %v", name, err))
+// 			return err
+// 		}
+// 		logger.Debug(fmt.Sprintln("Resultat de la copie de dossier:", result))
+// 		backupProcess(result, config.Backups[name], name, glacierMode)
+// 		logger.Info(fmt.Sprintf("Successfully backed up folder for %s", name))
+// 		return nil
+// 	case "s3":
+// 		logger.Info(fmt.Sprintf("Detected S3 backup for %s", name))
+// 		result, err := BackupRemoteS3(name, config.Backups[name])
+// 		if err != nil {
+// 			logger.Error(fmt.Sprintf("Failed to backup S3 for %s: %v", name, err))
+// 			return err
+// 		}
+// 		backupProcess(result, config.Backups[name], name, glacierMode)
+// 		logger.Info(fmt.Sprintf("Successfully backed up S3 for %s: %v", name, result))
+// 		return nil
+// 	case "mongo":
+// 		logger.Info(fmt.Sprintf("Detected MongoDB backup for %s", name))
+// 		result, err := BackupMongoDB(name, config.Backups[name])
+// 		if err != nil {
+// 			logger.Error(fmt.Sprintf("Failed to backup MongoDB for %s: %v", name, err))
+// 			return err
+// 		}
+// 		resultArray := []string{result}
+// 		backupProcess(resultArray, config.Backups[name], name, glacierMode)
+// 		logger.Info(fmt.Sprintf("Successfully backed up MongoDB for %s: %v", name, result))
+// 		return nil
+// 	case "sqlite":
+// 		logger.Info(fmt.Sprintf("Detected SQLite backup for %s", name))
+// 		result, err := BackupSqlite(name, config.Backups[name])
+// 		if err != nil {
+// 			logger.Error(fmt.Sprintf("Failed to backup SQLite for %s: %v", name, err))
+// 			return err
+// 		}
+// 		resultArray := []string{result}
+// 		backupProcess(resultArray, config.Backups[name], name, glacierMode)
+// 		logger.Info(fmt.Sprintf("Successfully backed up SQLite for %s: %v", name, result))
+// 		return nil
+// 	case "kubernetes":
+// 		logger.Info(fmt.Sprintf("Detected Kubernetes backup for %s", name))
+// 		result, err := BackupKube(name, config.Backups[name])
+// 		if err != nil {
+// 			logger.Error(fmt.Sprintf("Failed to backup Kubernetes for %s: %v", name, err))
+// 			return err
+// 		}
+// 		backupProcess(result, config.Backups[name], name, glacierMode)
+// 		logger.Info(fmt.Sprintf("Successfully backed up Kubernetes for %s", name))
+// 		return nil
+// 	default:
+// 		err := fmt.Errorf("unsupported backup type: %s", config.Backups[name].Type)
+// 		logger.Error(err.Error())
+// 		return err
+// 	}
+// }
+
 func CoreBackup(name string, glacierMode bool) error {
 	logger.Info(fmt.Sprintf("Starting backup for: %s", name))
 	config, err := utils.GetConfig()
@@ -77,79 +164,43 @@ func CoreBackup(name string, glacierMode bool) error {
 		return err
 	}
 
+	if len(utils.ModulesMap) == 0 {
+		if err := utils.LoadModules(); err != nil {
+			return err
+		}
+	}
+
 	defer func() {
 		if r := recover(); r != nil {
 			logger.Error(fmt.Sprintf("Panic occurred during backup for %s: %v", name, r))
 		}
 	}()
 
-	switch config.Backups[name].Type {
-	case "mysql":
-		logger.Info(fmt.Sprintf("Detected MySQL backup for %s", name))
-		result, err := BackupMySQL(name, config.Backups[name])
-		if err != nil {
-			logger.Error(fmt.Sprintf("Failed to backup MySQL for %s: %v", name, err))
-			return err
-		}
-		logger.Info(fmt.Sprintf("Successfully backed up MySQL for %s: %v", name, result))
-		backupProcess(result, config.Backups[name], name, glacierMode)
-		return nil
-	case "folder":
-		logger.Info(fmt.Sprintf("Detected folder backup for %s", name))
-		result, err := CopyFolder(name, config.Backups[name])
-		if err != nil {
-			logger.Error(fmt.Sprintf("Failed to backup folder for %s: %v", name, err))
-			return err
-		}
-		logger.Debug(fmt.Sprintln("Resultat de la copie de dossier:", result))
-		backupProcess(result, config.Backups[name], name, glacierMode)
-		logger.Info(fmt.Sprintf("Successfully backed up folder for %s", name))
-		return nil
-	case "s3":
-		logger.Info(fmt.Sprintf("Detected S3 backup for %s", name))
-		result, err := BackupRemoteS3(name, config.Backups[name])
-		if err != nil {
-			logger.Error(fmt.Sprintf("Failed to backup S3 for %s: %v", name, err))
-			return err
-		}
-		backupProcess(result, config.Backups[name], name, glacierMode)
-		logger.Info(fmt.Sprintf("Successfully backed up S3 for %s: %v", name, result))
-		return nil
-	case "mongo":
-		logger.Info(fmt.Sprintf("Detected MongoDB backup for %s", name))
-		result, err := BackupMongoDB(name, config.Backups[name])
-		if err != nil {
-			logger.Error(fmt.Sprintf("Failed to backup MongoDB for %s: %v", name, err))
-			return err
-		}
-		resultArray := []string{result}
-		backupProcess(resultArray, config.Backups[name], name, glacierMode)
-		logger.Info(fmt.Sprintf("Successfully backed up MongoDB for %s: %v", name, result))
-		return nil
-	case "sqlite":
-		logger.Info(fmt.Sprintf("Detected SQLite backup for %s", name))
-		result, err := BackupSqlite(name, config.Backups[name])
-		if err != nil {
-			logger.Error(fmt.Sprintf("Failed to backup SQLite for %s: %v", name, err))
-			return err
-		}
-		resultArray := []string{result}
-		backupProcess(resultArray, config.Backups[name], name, glacierMode)
-		logger.Info(fmt.Sprintf("Successfully backed up SQLite for %s: %v", name, result))
-		return nil
-	case "kubernetes":
-		logger.Info(fmt.Sprintf("Detected Kubernetes backup for %s", name))
-		result, err := BackupKube(name, config.Backups[name])
-		if err != nil {
-			logger.Error(fmt.Sprintf("Failed to backup Kubernetes for %s: %v", name, err))
-			return err
-		}
-		backupProcess(result, config.Backups[name], name, glacierMode)
-		logger.Info(fmt.Sprintf("Successfully backed up Kubernetes for %s", name))
-		return nil
-	default:
-		err := fmt.Errorf("unsupported backup type: %s", config.Backups[name].Type)
+	backupType := config.Backups[name].Type
+	mod, ok := utils.ModulesMap[backupType]
+	if !ok {
+		err := fmt.Errorf("unsupported backup type: %s", backupType)
 		logger.Error(err.Error())
 		return err
 	}
+
+	backupArgs, err := json.Marshal(config.Backups[name])
+	if err != nil {
+		logger.Error(fmt.Sprintf("Failed to marshal backup config for %s: %v", name, err))
+		return err
+	}
+
+	binPath := filepath.Join(mod.Dir, mod.Bin)
+
+	cmd := exec.Command(binPath, "--backup", "--args", string(backupArgs), "--name", name, "--glacier", fmt.Sprintf("%t", glacierMode))
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		logger.Error(fmt.Sprintf("Failed to backup %s for %s: %v, output: %s", backupType, name, err, string(output)))
+		return err
+	}
+
+	logger.Info(fmt.Sprintf("Successfully backed up %s for %s: %s", backupType, name, string(output)))
+	backupProcess([]string{string(output)}, config.Backups[name], name, glacierMode)
+	logger.Info(fmt.Sprintf("Successfully backed up %s for %s", backupType, name))
+	return nil
 }
