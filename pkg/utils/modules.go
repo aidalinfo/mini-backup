@@ -26,49 +26,49 @@ var (
 func LoadModules() (map[string]Module, error) {
 	modules := make(map[string]Module)
 	modulesDir := "./modules"
-	entries, err := os.ReadDir(modulesDir)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read modules directory: %w", err)
-	}
 
 	fmt.Println("🔍 Chargement des modules...")
 
-	for _, entry := range entries {
-		if entry.IsDir() {
-			modulePath := filepath.Join(modulesDir, entry.Name())
-			yamlPath := filepath.Join(modulePath, "module.yaml")
+	err := filepath.WalkDir(modulesDir, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
 
-			fmt.Println("📂 Vérification de :", yamlPath)
+		// Si on trouve un fichier nommé module.yaml
+		if !d.IsDir() && d.Name() == "module.yaml" {
+			fmt.Println("📂 Vérification de :", path)
 
-			if _, err := os.Stat(yamlPath); os.IsNotExist(err) {
-				fmt.Println("⚠️ Pas de module.yaml trouvé :", yamlPath)
-				continue
-			}
-
-			data, err := os.ReadFile(yamlPath)
+			data, err := os.ReadFile(path)
 			if err != nil {
-				fmt.Println("❌ Erreur de lecture de module.yaml :", yamlPath, err)
-				continue
+				fmt.Println("❌ Erreur de lecture de module.yaml :", path, err)
+				return nil
 			}
 			fmt.Println("📂 Contenu brut de module.yaml :", string(data))
 
 			var genericMap map[string]Module
 			if err := yaml.Unmarshal(data, &genericMap); err != nil {
-				fmt.Println("❌ Erreur de parsing YAML :", yamlPath, err)
-				continue
+				fmt.Println("❌ Erreur de parsing YAML :", path, err)
+				return nil
 			}
+
+			// On considère que le dossier parent de module.yaml correspond au dossier du module
+			moduleDir := filepath.Dir(path)
 
 			for key, mod := range genericMap {
 				fmt.Println("🔍 Module détecté sous la clé :", key)
-				mod.Dir = modulePath
+				mod.Dir = moduleDir
 
 				if mod.Enable {
 					modules[mod.Type] = mod
-					fmt.Printf("✅ Module chargé : %s (Type: %s, Version: %s) depuis %s\n", mod.Name, mod.Type, mod.Version, modulePath)
+					fmt.Printf("✅ Module chargé : %s (Type: %s, Version: %s) depuis %s\n", mod.Name, mod.Type, mod.Version, moduleDir)
 				}
-				break // On prend le premier module trouvé
+				break // on prend le premier module trouvé dans le fichier
 			}
 		}
+		return nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("erreur lors du parcours des modules: %w", err)
 	}
 
 	return modules, nil

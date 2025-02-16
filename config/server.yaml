@@ -3,6 +3,9 @@ server:
   debug: true
   # log: "./logs/server.log"
 
+modules:
+  - mysql
+
 # secret_manager:
 #   infisical:
 #     name: "infisical"

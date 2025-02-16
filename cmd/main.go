@@ -5,6 +5,7 @@ import (
 	"mini-backup/pkg/api"
 	"mini-backup/pkg/backup"
 	"mini-backup/pkg/utils"
+	"mini-backup/pkg/utils/server/bootstrap"
 )
 
 func main() {
@@ -18,6 +19,7 @@ func main() {
 			return
 		}
 	}
+	bootstrap.BootstrapModule()
 	modules, err := utils.LoadModules()
 	if err != nil {
 		logger.Error(fmt.Sprintf("Failed to load modules: %v", err))

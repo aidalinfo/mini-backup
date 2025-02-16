@@ -13,6 +13,7 @@ type ServerConfig struct {
 	Server        ServerSettings            `yaml:"server"`
 	SecretManager map[string]SecretManager  `yaml:"secret_manager"`
 	RStorage      map[string]RStorageConfig `yaml:"rstorage"`
+	Modules       []string                  `yaml:"modules"`
 }
 
 type ServerSettings struct {
@@ -32,7 +33,7 @@ type SecretManager struct {
 type RStorageConfig struct {
 	Endpoint   string `yaml:"endpoint"`
 	BucketName string `yaml:"bucket_name"`
-	PathStyle bool `yaml:"pathStyle"`
+	PathStyle  bool   `yaml:"pathStyle"`
 	AccessKey  string `yaml:"access_key"`
 	SecretKey  string `yaml:"secret_key"`
 	Region     string `yaml:"region"`
@@ -73,16 +74,16 @@ func resolveEnvVariables(config *ServerConfig) error {
 	// Regex pour détecter les références comme ${{ENV_VAR}}
 	envRegex := regexp.MustCompile(`\${{\s*(\w+)\s*}}`)
 	resolve := func(value string) string {
-    return envRegex.ReplaceAllStringFunc(value, func(match string) string {
-        matches := envRegex.FindStringSubmatch(match)
-        if len(matches) == 2 {
-            if envValue := GetEnv[string](matches[1]); envValue != "" {
-                return envValue
-            }
-        }
-        return match
-    })
-}
+		return envRegex.ReplaceAllStringFunc(value, func(match string) string {
+			matches := envRegex.FindStringSubmatch(match)
+			if len(matches) == 2 {
+				if envValue := GetEnv[string](matches[1]); envValue != "" {
+					return envValue
+				}
+			}
+			return match
+		})
+	}
 
 	// Résolution pour les paramètres du gestionnaire de secrets
 	for key, sm := range config.SecretManager {
