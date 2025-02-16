@@ -14,7 +14,7 @@ var logger = utils.LoggerFunc()
 
 type ModuleOutput struct {
 	Logs  map[string][]string `json:"logs"`
-	State bool                `json:"state"`
+	State bool                `json:"result"`
 }
 
 func CoreRestore(name string, backupFile string, restoreName string, restoreParams any) error {
@@ -79,7 +79,7 @@ func CoreRestore(name string, backupFile string, restoreName string, restorePara
 			logger.Info(fmt.Sprintf("[%s] %s", level, msg), fmt.Sprintf("module_restore_%s", name))
 		}
 	}
-
+	logger.Info(fmt.Sprintf("Output of restore command: %+v", moduleOutput))
 	if !moduleOutput.State {
 		logger.Error("❌ Aucun chemin de restauration trouvé dans la sortie JSON")
 		return fmt.Errorf("no restore path found")
@@ -87,18 +87,6 @@ func CoreRestore(name string, backupFile string, restoreName string, restorePara
 	logger.Info(fmt.Sprintf("Successfully restored %s for %s", backupConfig.Type, name))
 	return nil
 }
-
-// // mapToStruct convertit une map[string]interface{} en une structure donnée.
-// func mapToStruct(input map[string]interface{}, output interface{}) error {
-// 	jsonData, err := json.Marshal(input)
-// 	if err != nil {
-// 		return fmt.Errorf("failed to marshal map to JSON: %w", err)
-// 	}
-// 	if err := json.Unmarshal(jsonData, output); err != nil {
-// 		return fmt.Errorf("failed to unmarshal JSON to struct: %w", err)
-// 	}
-// 	return nil
-// }
 
 // restoreProcess gère le téléchargement, le déchiffrement et la décompression d'un fichier de sauvegarde.
 func restoreProcess(name string, config utils.Backup, backupFile string) (string, error) {

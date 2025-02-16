@@ -2,7 +2,7 @@ backups:
   sqlserver-01:
     type: mysql
     mysql:
-      allDatabases: true
+      all: true
       host: "localhost"
       port: "3306"
       user: "root"
@@ -15,4 +15,4 @@ backups:
       standard: 
         days: 20
     schedule:
-      standard: "*/1 * * * *"
+      standard: "*/2 * * * *"
