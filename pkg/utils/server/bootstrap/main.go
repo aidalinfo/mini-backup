@@ -5,6 +5,7 @@ import (
 	"log"
 	"mini-backup/pkg/utils"
 	"mini-backup/pkg/utils/server/packager"
+	"os"
 	"path/filepath"
 )
 
@@ -14,22 +15,42 @@ func BootstrapModule() {
 		log.Fatalf("Erreur lors du chargement de la configuration: %v", err)
 	}
 
-	// Si des modules sont spécifiés dans la configuration, les traiter
-	if len(config.Modules) > 0 {
-		fmt.Println("Téléchargement des modules spécifiés dans la configuration:")
+	// Chargement des modules locaux (fichiers module.yaml)
+	localModules, err := utils.LoadModules()
+	if err != nil {
+		log.Fatalf("Erreur lors du chargement des modules locaux: %v", err)
+	}
 
-		// Récupérer la liste complète des modules depuis l'index du dépôt
-		modulesList, err := packager.ListModules()
-		if err != nil {
-			log.Fatalf("Erreur lors de la récupération de l'index des modules: %v", err)
+	// Récupération de la liste complète des modules distants depuis l'index
+	modulesList, err := packager.ListModules()
+	if err != nil {
+		log.Fatalf("Erreur lors de la récupération de l'index des modules: %v", err)
+	}
+
+	// Pour chaque module défini dans la configuration
+	for _, moduleName := range config.Modules {
+		var moduleFound bool
+
+		// D'abord, on vérifie si le module est déjà installé localement
+		if localMod, ok := localModules[moduleName]; ok {
+			// Conversion du module local (utils.Module) en module compatible avec packager.CheckModuleVersion.
+			// Ici, on suppose que le champ Name de utils.Module correspond à la clé attendue.
+			remoteModule := utils.Module{
+				Version:  localMod.Version,
+				Type:     localMod.Type,
+			}
+
+			// Vérification de la version locale par rapport à l'index distant
+			if err := packager.CheckModuleVersion(remoteModule); err != nil {
+				fmt.Printf("Erreur lors de la vérification du module %s : %v\n", localMod.Name, err)
+			}
+			moduleFound = true
 		}
 
-		// Pour chaque module défini dans la configuration
-		for _, moduleName := range config.Modules {
-			var moduleFound bool
+		// Si le module n'est pas installé localement, le télécharger
+		if !moduleFound {
 			for _, mod := range modulesList {
 				if mod.Name == moduleName {
-					moduleFound = true
 					// Chemin pour enregistrer le fichier zip téléchargé
 					zipPath := filepath.Join("modules", mod.Category, mod.Name+".zip")
 					fmt.Printf("Téléchargement du module %s depuis %s...\n", mod.Name, mod.DownloadURL)
@@ -45,7 +66,12 @@ func BootstrapModule() {
 						} else {
 							fmt.Printf("Module %s décompressé avec succès dans %s\n", mod.Name, unzipDest)
 						}
+						// Suppression du zip téléchargé
+						if err := os.Remove(zipPath); err != nil {
+							fmt.Printf("Erreur lors de la suppression du fichier zip %s: %v\n", zipPath, err)
+						}
 					}
+					moduleFound = true
 					break // On passe au module suivant dès qu'on a traité le module trouvé
 				}
 			}
@@ -53,9 +79,5 @@ func BootstrapModule() {
 				fmt.Printf("Module '%s' introuvable dans l'index des modules.\n", moduleName)
 			}
 		}
-	} else {
-		fmt.Println("Aucun module à télécharger dans la configuration.")
 	}
-
-	// Ici, poursuivre le bootstrap de votre serveur...
 }

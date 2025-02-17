@@ -105,7 +105,7 @@ func CoreBackup(name string, glacierMode bool) error {
 		logger.Error(fmt.Sprintf("Erreur lors de la création du JSON backupArgs : %v", err))
 		return err
 	}
-
+	//TOOD best management stderr and stdout of binary
 	binPath := filepath.Join(mod.Dir, mod.Bin)
 	cmd := exec.Command(binPath, "backup", name, backupArgs)
 	output, err := cmd.CombinedOutput()
@@ -115,12 +115,21 @@ func CoreBackup(name string, glacierMode bool) error {
 	}
 
 	logger.Info(fmt.Sprintf("Output of backup command: %s", string(output)))
-
+	outputStr := string(output)
+	jsonObjects := extractJSONObjects(outputStr)
 	var moduleOutput ModuleOutput
-	err = json.Unmarshal(output, &moduleOutput)
-	if err != nil {
-		logger.Error(fmt.Sprintf("Erreur lors du parsing du JSON de sortie: %v", err))
-		return err
+	found := false
+	for _, js := range jsonObjects {
+		var tmp ModuleOutput
+		if err := json.Unmarshal([]byte(js), &tmp); err == nil && tmp.Logs != nil && len(tmp.Result) > 0 {
+			moduleOutput = tmp
+			found = true
+			break
+		}
+	}
+	if !found {
+		logger.Error("❌ Aucun JSON valide contenant 'logs' et 'result' n'a été trouvé dans la sortie")
+		return fmt.Errorf("aucun JSON valide trouvé")
 	}
 
 	for level, logs := range moduleOutput.Logs {
@@ -138,4 +147,25 @@ func CoreBackup(name string, glacierMode bool) error {
 	backupProcess([]string{backupPath}, config.Backups[name], name, glacierMode)
 	logger.Info(fmt.Sprintf("Successfully backed up %s for %s", backupType, name))
 	return nil
+}
+
+func extractJSONObjects(s string) []string {
+	var objects []string
+	start := -1
+	count := 0
+	for i, r := range s {
+		if r == '{' {
+			if count == 0 {
+				start = i
+			}
+			count++
+		} else if r == '}' {
+			count--
+			if count == 0 && start != -1 {
+				objects = append(objects, s[start:i+1])
+				start = -1
+			}
+		}
+	}
+	return objects
 }

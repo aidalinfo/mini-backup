@@ -18,7 +18,7 @@ type BackupConfig struct {
 type Backup struct {
 	Type       string      `yaml:"type"`
 	Folder     []string    `yaml:"folder"`
-	S3         S3config    `yaml:"s3"`
+	S3         *S3config    `yaml:"s3"`
 	Mysql      *Mysql      `yaml:"mysql,omitempty"`
 	Mongo      *Mongo      `yaml:"mongo,omitempty"`
 	Sqlite     *Sqlite     `yaml:"sqlite,omitempty"`
@@ -194,7 +194,6 @@ func BuildBackupArgs(backup Backup, glacierMode bool) (string, error) {
 	exclude := map[string]bool{
 		"Type":      true,
 		"Folder":    true,
-		"S3":        true,
 		"Path":      true,
 		"Retention": true,
 		"Schedule":  true,

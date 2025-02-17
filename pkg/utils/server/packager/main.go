@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"mini-backup/pkg/utils"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -13,13 +14,14 @@ import (
 
 const (
 	// URL de l'index des modules
-	IndexURL = "https://pkg.aidalinfo.fr/repository/minibackup-modules/index.json"
+	IndexURL = "https://raw.githubusercontent.com/aidalinfo/modules-minibackup/main/.index.json"
 	// URL de base pour le téléchargement des modules
 	BaseURL = "https://pkg.aidalinfo.fr/repository/minibackup-modules"
 )
 
 // Module représente la structure d'un module dans le JSON.
 type Module struct {
+	
 	Version  string            `json:"version"`
 	Type     string            `json:"type"`
 	Path     string            `json:"path"`
@@ -114,7 +116,6 @@ func DownloadModule(downloadURL, outputPath string) error {
 	}
 	defer outFile.Close()
 
-	// Copie du contenu téléchargé dans le fichier
 	_, err = io.Copy(outFile, resp.Body)
 	if err != nil {
 		return fmt.Errorf("erreur lors de l'écriture dans le fichier %s: %v", outputPath, err)
@@ -170,6 +171,43 @@ func UnzipModule(zipPath, destDir string) error {
 		if err != nil {
 			return err
 		}
+	}
+
+	return nil
+}
+
+func CheckModuleVersion(mod utils.Module) error {
+	// Récupération de l'index distant
+	index, err := FetchModuleIndex()
+	if err != nil {
+		return fmt.Errorf("erreur lors de la récupération de l'index distant: %v", err)
+	}
+
+	var remoteVersion string
+	found := false
+
+	for _, modules := range index {
+		for key, remoteMod := range modules {
+			if key == mod.Type || key == mod.Name {
+				remoteVersion = remoteMod.Version
+				found = true
+				break
+			}
+		}
+		if found {
+			break
+		}
+	}
+
+	if !found {
+		return fmt.Errorf("module %s non trouvé dans l'index distant", mod.Name)
+	}
+
+	// Comparaison des versions
+	if mod.Version == remoteVersion {
+		fmt.Printf("✅ Le module %s (version %s) est à jour.\n", mod.Name, mod.Version)
+	} else {
+		fmt.Printf("⚠️ Mise à jour disponible pour le module %s : version locale = %s, version distante = %s.\n", mod.Name, mod.Version, remoteVersion)
 	}
 
 	return nil
