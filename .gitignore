@@ -14,3 +14,4 @@ kubeconfig.yaml
 kubeconfig2.yaml
 datatest/
 dev/compose/mysql
+modules
