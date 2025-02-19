@@ -1,7 +1,7 @@
 package restore
 
 import (
-	"encoding/json"
+	"bufio"
 	"fmt"
 	"mini-backup/pkg/utils"
 	"os"
@@ -59,33 +59,38 @@ func CoreRestore(name string, backupFile string, restoreName string, restorePara
 	}
 	binPath := filepath.Join(mod.Dir, mod.Bin)
 	cmd := exec.Command(binPath, "restore", name, backupPath, restoreArgs)
-	output, err := cmd.CombinedOutput()
+
+	stdoutPipe, err := cmd.StdoutPipe()
 	if err != nil {
-		logger.Error(fmt.Sprintf("Failed to restore %s for %s: %v, output: %s", backupConfig.Type, name, err, string(output)))
-		return err
+			logger.Error(fmt.Sprintf("Erreur lors de la création du stdout pipe: %v", err))
+			return err
 	}
 
-	logger.Info(fmt.Sprintf("Output of restore command: %s", string(output)))
-
-	var moduleOutput ModuleOutput
-	err = json.Unmarshal(output, &moduleOutput)
-	if err != nil {
-		logger.Error(fmt.Sprintf("Erreur lors du parsing du JSON de sortie: %v", err))
-		return err
+	// Redirection de stdout vers le logger dans une goroutine
+	go func() {
+			scanner := bufio.NewScanner(stdoutPipe)
+			for scanner.Scan() {
+					logger.Info(fmt.Sprintf("stdout module : %s", scanner.Text()))                         
+			}
+			if err := scanner.Err(); err != nil {
+					logger.Error(fmt.Sprintf("Erreur lors de la lecture de stdout: %v", err))
+			}
+	}()
+	if err := cmd.Start(); err != nil {
+			logger.Error(fmt.Sprintf("Erreur lors du lancement de la commande: %v", err))
+			return err
 	}
-
-	for level, logs := range moduleOutput.Logs {
-		for _, msg := range logs {
-			logger.Info(fmt.Sprintf("[%s] %s", level, msg), fmt.Sprintf("module_restore_%s", name))
-		}
+	if err := cmd.Wait(); err != nil {
+			logger.Error(fmt.Sprintf("Erreur lors de la lecture du stderr: %v", err))
+			return err
 	}
-	logger.Info(fmt.Sprintf("Output of restore command: %+v", moduleOutput))
-	if !moduleOutput.State {
-		logger.Error("❌ Aucun chemin de restauration trouvé dans la sortie JSON")
-		return fmt.Errorf("no restore path found")
+	logger.Info(fmt.Sprintf("Commande terminée avec le code %d", cmd.ProcessState.ExitCode()))
+	if(cmd.ProcessState.ExitCode() != 0) {
+		logger.Error(fmt.Sprintf("Erreur lors de la restauration, code : %d", cmd.ProcessState.ExitCode()))
+		return fmt.Errorf("Commande terminée avec le code %d", cmd.ProcessState.ExitCode())
+	}else {
+		return nil
 	}
-	logger.Info(fmt.Sprintf("Successfully restored %s for %s", backupConfig.Type, name))
-	return nil
 }
 
 // restoreProcess gère le téléchargement, le déchiffrement et la décompression d'un fichier de sauvegarde.

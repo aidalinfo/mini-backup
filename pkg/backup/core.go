@@ -1,7 +1,7 @@
 package backup
 
 import (
-	"encoding/json"
+	"bufio"
 	"fmt"
 	"mini-backup/pkg/utils"
 	"os"
@@ -10,11 +10,6 @@ import (
 )
 
 var logger = utils.LoggerFunc()
-
-type ModuleOutput struct {
-	Logs   map[string][]string `json:"logs"`
-	Result []string            `json:"result"`
-}
 
 func backupProcess(path []string, config utils.Backup, backupName string, glacierMode bool) error {
 	compressedPath := []string{}
@@ -105,67 +100,43 @@ func CoreBackup(name string, glacierMode bool) error {
 		logger.Error(fmt.Sprintf("Erreur lors de la création du JSON backupArgs : %v", err))
 		return err
 	}
-	//TOOD best management stderr and stdout of binary
 	binPath := filepath.Join(mod.Dir, mod.Bin)
 	cmd := exec.Command(binPath, "backup", name, backupArgs)
-	output, err := cmd.CombinedOutput()
+
+	stdoutPipe, err := cmd.StdoutPipe()
 	if err != nil {
-		logger.Error(fmt.Sprintf("Failed to backup %s for %s: %v, output: %s", backupType, name, err, string(output)))
-		return err
+			logger.Error(fmt.Sprintf("Erreur lors de la création du stdout pipe: %v", err))
+			return err
 	}
+	var lastLine string
+	go func() {
+			scanner := bufio.NewScanner(stdoutPipe)
+			for scanner.Scan() {
+					logger.Info(fmt.Sprintf("stdout module : %s", scanner.Text()))
+					line := scanner.Text()
+					lastLine = line                           // Mise à jour de la dernière ligne lue
+			}
+			if err := scanner.Err(); err != nil {
+					logger.Error(fmt.Sprintf("Erreur lors de la lecture de stdout: %v", err))
+			}
+	}()
 
-	logger.Info(fmt.Sprintf("Output of backup command: %s", string(output)))
-	outputStr := string(output)
-	jsonObjects := extractJSONObjects(outputStr)
-	var moduleOutput ModuleOutput
-	found := false
-	for _, js := range jsonObjects {
-		var tmp ModuleOutput
-		if err := json.Unmarshal([]byte(js), &tmp); err == nil && tmp.Logs != nil && len(tmp.Result) > 0 {
-			moduleOutput = tmp
-			found = true
-			break
-		}
+	// Démarrer la commande
+	if err := cmd.Start(); err != nil {
+			logger.Error(fmt.Sprintf("Erreur lors du démarrage de la commande: %v", err))
+			return err
 	}
-	if !found {
-		logger.Error("❌ Aucun JSON valide contenant 'logs' et 'result' n'a été trouvé dans la sortie")
-		return fmt.Errorf("aucun JSON valide trouvé")
+	// Attendre la fin de l'exécution de la commande
+	if err := cmd.Wait(); err != nil {
+			logger.Error(fmt.Sprintf("Erreur lors de l'exécution de la commande: %v", err))
+			return err
 	}
+	// logger.Info(fmt.Sprintf("Commande exécutée avec succès: %s", output))
+	backupPath := string(lastLine)
 
-	for level, logs := range moduleOutput.Logs {
-		for _, msg := range logs {
-			logger.Info(fmt.Sprintf("[%s] %s", level, msg), fmt.Sprintf("module_backup_%s", name))
-		}
-	}
-
-	if len(moduleOutput.Result) == 0 {
-		logger.Error("❌ Aucun chemin de backup trouvé dans la sortie JSON")
-		return fmt.Errorf("no backup path found")
-	}
-	backupPath := moduleOutput.Result[0]
 	logger.Info(fmt.Sprintf("Backup path extrait: %s", backupPath))
+
 	backupProcess([]string{backupPath}, config.Backups[name], name, glacierMode)
 	logger.Info(fmt.Sprintf("Successfully backed up %s for %s", backupType, name))
 	return nil
-}
-
-func extractJSONObjects(s string) []string {
-	var objects []string
-	start := -1
-	count := 0
-	for i, r := range s {
-		if r == '{' {
-			if count == 0 {
-				start = i
-			}
-			count++
-		} else if r == '}' {
-			count--
-			if count == 0 && start != -1 {
-				objects = append(objects, s[start:i+1])
-				start = -1
-			}
-		}
-	}
-	return objects
 }
