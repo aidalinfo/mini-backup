@@ -12,11 +12,6 @@ import (
 
 var logger = utils.LoggerFunc()
 
-type ModuleOutput struct {
-	Logs  map[string][]string `json:"logs"`
-	State bool                `json:"result"`
-}
-
 func CoreRestore(name string, backupFile string, restoreName string, restoreParams any) error {
 	logger.Info(fmt.Sprintf("Starting restore for: %s", name))
 
@@ -70,7 +65,7 @@ func CoreRestore(name string, backupFile string, restoreName string, restorePara
 	go func() {
 			scanner := bufio.NewScanner(stdoutPipe)
 			for scanner.Scan() {
-					logger.Info(fmt.Sprintf("stdout module : %s", scanner.Text()))                         
+					logger.Info(scanner.Text(), fmt.Sprintf("[MODULE] [%s]", mod.Name))
 			}
 			if err := scanner.Err(); err != nil {
 					logger.Error(fmt.Sprintf("Erreur lors de la lecture de stdout: %v", err))

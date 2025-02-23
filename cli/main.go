@@ -22,6 +22,7 @@ func main() {
 	rootCmd.AddCommand(commands.NewListCommand())
 	rootCmd.AddCommand(commands.NewRestoreCommand())
 	rootCmd.AddCommand(commands.NewUpdateCommand(currentVersion))
+	rootCmd.AddCommand(commands.NewModulesCommand())
 
 	// Exécuter la CLI
 	if err := rootCmd.Execute(); err != nil {

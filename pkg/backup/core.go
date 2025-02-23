@@ -112,9 +112,9 @@ func CoreBackup(name string, glacierMode bool) error {
 	go func() {
 			scanner := bufio.NewScanner(stdoutPipe)
 			for scanner.Scan() {
-					logger.Info(fmt.Sprintf("stdout module : %s", scanner.Text()))
+					logger.Info(scanner.Text(), fmt.Sprintf("[MODULE] [%s]", mod.Name))
 					line := scanner.Text()
-					lastLine = line                           // Mise à jour de la dernière ligne lue
+					lastLine = line                           
 			}
 			if err := scanner.Err(); err != nil {
 					logger.Error(fmt.Sprintf("Erreur lors de la lecture de stdout: %v", err))
@@ -131,7 +131,6 @@ func CoreBackup(name string, glacierMode bool) error {
 			logger.Error(fmt.Sprintf("Erreur lors de l'exécution de la commande: %v", err))
 			return err
 	}
-	// logger.Info(fmt.Sprintf("Commande exécutée avec succès: %s", output))
 	backupPath := string(lastLine)
 
 	logger.Info(fmt.Sprintf("Backup path extrait: %s", backupPath))

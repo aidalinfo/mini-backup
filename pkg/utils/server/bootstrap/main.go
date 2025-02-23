@@ -2,82 +2,90 @@ package bootstrap
 
 import (
 	"fmt"
-	"log"
 	"mini-backup/pkg/utils"
 	"mini-backup/pkg/utils/server/packager"
-	"os"
-	"path/filepath"
 )
+
+var logger = utils.LoggerFunc()
 
 func BootstrapModule() {
 	config, err := utils.GetConfigServer()
 	if err != nil {
-		log.Fatalf("Erreur lors du chargement de la configuration: %v", err)
+		logger.Error(fmt.Sprintf("Erreur lors de la lecture de la configuration : %v", err))
+		return
 	}
 
-	// Chargement des modules locaux (fichiers module.yaml)
 	localModules, err := utils.LoadModules()
 	if err != nil {
-		log.Fatalf("Erreur lors du chargement des modules locaux: %v", err)
+		logger.Error(fmt.Sprintf("Erreur lors du chargement des modules locaux : %v", err))
+		return
 	}
 
-	// Récupération de la liste complète des modules distants depuis l'index
 	modulesList, err := packager.ListModules()
 	if err != nil {
-		log.Fatalf("Erreur lors de la récupération de l'index des modules: %v", err)
+		logger.Error(fmt.Sprintf("Erreur lors de la récupération de la liste des modules : %v", err))
+		return
 	}
 
-	// Pour chaque module défini dans la configuration
 	for _, moduleName := range config.Modules {
 		var moduleFound bool
-
-		// D'abord, on vérifie si le module est déjà installé localement
+		// Vérification si le module est déjà installé 
 		if localMod, ok := localModules[moduleName]; ok {
-			// Conversion du module local (utils.Module) en module compatible avec packager.CheckModuleVersion.
-			// Ici, on suppose que le champ Name de utils.Module correspond à la clé attendue.
 			remoteModule := utils.Module{
+				Name:    moduleName,
 				Version:  localMod.Version,
 				Type:     localMod.Type,
 			}
-
-			// Vérification de la version locale par rapport à l'index distant
-			if err := packager.CheckModuleVersion(remoteModule); err != nil {
-				fmt.Printf("Erreur lors de la vérification du module %s : %v\n", localMod.Name, err)
+			needUpdate, err := packager.CheckModuleVersion(remoteModule)
+			if err != nil {
+				logger.Error(fmt.Sprintf("Erreur lors de la vérification de la version du module %s : %v", moduleName, err))
+			} else if needUpdate {
+				// Lancement de l'installation pour mettre à jour le module
+				for _, mod := range modulesList {
+					if mod.Name == moduleName {
+						modulePkg := packager.ModulePackage{
+							Category:    mod.Category,
+							Name:        mod.Name,
+							ModuleInfo:  mod.ModuleInfo,
+							DownloadURL: mod.DownloadURL,
+						}
+						logger.Info(fmt.Sprintf("Mise à jour du module %s...", mod.Name))
+						if err := packager.InstallModule(modulePkg); err != nil {
+							logger.Error(fmt.Sprintf("Erreur lors de la mise à jour du module %s : %v", mod.Name, err))
+						} else {
+							logger.Info(fmt.Sprintf("Module %s mis à jour avec succès", mod.Name))
+						}
+						break
+					}
+				}
 			}
 			moduleFound = true
 		}
 
-		// Si le module n'est pas installé localement, le télécharger
+		// Si le module n'est pas installé localement, le télécharger et l'installer
 		if !moduleFound {
 			for _, mod := range modulesList {
 				if mod.Name == moduleName {
-					// Chemin pour enregistrer le fichier zip téléchargé
-					zipPath := filepath.Join("modules", mod.Category, mod.Name+".zip")
-					fmt.Printf("Téléchargement du module %s depuis %s...\n", mod.Name, mod.DownloadURL)
-					if err := packager.DownloadModule(mod.DownloadURL, zipPath); err != nil {
-						fmt.Printf("Erreur lors du téléchargement du module %s: %v\n", mod.Name, err)
+					modulePkg := packager.ModulePackage{
+						Category:    mod.Category,
+						Name:        mod.Name,
+						ModuleInfo:  mod.ModuleInfo,
+						DownloadURL: mod.DownloadURL,
+					}
+					logger.Info(fmt.Sprintf("Installation du module %s...", mod.Name))
+					if err := packager.InstallModule(modulePkg); err != nil {
+						logger.Error(fmt.Sprintf("Erreur lors de l'installation du module %s : %v", mod.Name, err))
 					} else {
-						fmt.Printf("Module %s téléchargé avec succès dans %s\n", mod.Name, zipPath)
-						// Définir le dossier de destination pour la décompression
-						unzipDest := filepath.Join("modules", mod.Category, mod.Name)
-						fmt.Printf("Décompression du module %s dans %s...\n", mod.Name, unzipDest)
-						if err := packager.UnzipModule(zipPath, unzipDest); err != nil {
-							fmt.Printf("Erreur lors de la décompression du module %s: %v\n", mod.Name, err)
-						} else {
-							fmt.Printf("Module %s décompressé avec succès dans %s\n", mod.Name, unzipDest)
-						}
-						// Suppression du zip téléchargé
-						if err := os.Remove(zipPath); err != nil {
-							fmt.Printf("Erreur lors de la suppression du fichier zip %s: %v\n", zipPath, err)
-						}
+						logger.Info(fmt.Sprintf("Module %s installé avec succès", mod.Name))
 					}
 					moduleFound = true
-					break // On passe au module suivant dès qu'on a traité le module trouvé
+					break
 				}
 			}
 			if !moduleFound {
-				fmt.Printf("Module '%s' introuvable dans l'index des modules.\n", moduleName)
+				logger.Error(fmt.Sprintf("Module %s introuvable", moduleName))
 			}
 		}
+
 	}
 }

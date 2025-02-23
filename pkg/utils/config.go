@@ -24,7 +24,7 @@ type Backup struct {
 	Schedule    Schedule    `yaml:"schedule"`
 }
 
-// on décode d'abord en map, puis on extrait la config du type.
+// on décode en map, puis on extrait la config du type
 func (b *Backup) UnmarshalYAML(node *yaml.Node) error {
 	// On décode dans une map pour accéder à toutes les clés
 	var raw map[string]interface{}
