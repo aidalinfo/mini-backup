@@ -252,8 +252,31 @@ func DecompressTar(tarPath, outputPath string) error {
 				getLogger().Error(fmt.Sprintf("Failed to create directory: %s : %v", targetPath, err))
 				return err
 			}
-		case tar.TypeReg:
-			file, err := os.Create(targetPath)
+			case tar.TypeReg:
+    outFile, err := os.OpenFile(targetPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, os.FileMode(header.Mode))
+    if err != nil {
+        // Gestion spécifique du "permission denied"
+        if os.IsPermission(err) || strings.Contains(err.Error(), "permission denied") {
+            getLogger().Error(fmt.Sprintf("Permission denied, skipping file: %s", targetPath))
+            continue
+        }
+        getLogger().Error(fmt.Sprintf("Failed to create file: %s : %v", targetPath, err))
+        return err
+    }
+
+    if _, err := io.Copy(outFile, tarReader); err != nil {
+        outFile.Close()
+        // Même gestion sur le write
+        if os.IsPermission(err) || strings.Contains(err.Error(), "permission denied") {
+            getLogger().Error(fmt.Sprintf("Permission denied while writing, skipping file: %s", targetPath))
+            continue
+        }
+        getLogger().Error(fmt.Sprintf("Failed to write file: %s : %v", targetPath, err))
+        return err
+    }
+    outFile.Close()
+
+			file, err := os.OpenFile(targetPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, os.FileMode(header.Mode))
 			if err != nil {
 				getLogger().Error(fmt.Sprintf("Failed to create file: %s : %v", targetPath, err))
 				return err

@@ -8,9 +8,11 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 )
 
 var logger = utils.LoggerFunc()
+
 
 func CoreRestore(name string, backupFile string, restoreName string, restoreParams any) error {
 	logger.Info(fmt.Sprintf("Starting restore for: %s", name))
@@ -57,35 +59,46 @@ func CoreRestore(name string, backupFile string, restoreName string, restorePara
 
 	stdoutPipe, err := cmd.StdoutPipe()
 	if err != nil {
-			logger.Error(fmt.Sprintf("Erreur lors de la création du stdout pipe: %v", err))
-			return err
+		logger.Error(fmt.Sprintf("Erreur lors de la création du stdout pipe: %v", err))
+		return err
 	}
 
-	// Redirection de stdout vers le logger dans une goroutine
+	// Utilisation d'un WaitGroup pour attendre la fin de la lecture
+	var wg sync.WaitGroup
+	wg.Add(1)
 	go func() {
-			scanner := bufio.NewScanner(stdoutPipe)
-			for scanner.Scan() {
-					logger.Info(scanner.Text(), fmt.Sprintf("[MODULE] [%s]", mod.Name))
+		defer wg.Done()
+		scanner := bufio.NewScanner(stdoutPipe)
+		for scanner.Scan() {
+			logger.Info(scanner.Text(), fmt.Sprintf("[MODULE] [%s]", mod.Name))
+		}
+		if err := scanner.Err(); err != nil {
+			// Ignorer l'erreur "file already closed"
+			if strings.Contains(err.Error(), "file already closed") {
+				// On ne logge pas cette erreur
+			} else {
+				logger.Error(fmt.Sprintf("Erreur lors de la lecture de stdout: %v", err))
 			}
-			if err := scanner.Err(); err != nil {
-					logger.Error(fmt.Sprintf("Erreur lors de la lecture de stdout: %v", err))
-			}
+		}
 	}()
+
 	if err := cmd.Start(); err != nil {
-			logger.Error(fmt.Sprintf("Erreur lors du lancement de la commande: %v", err))
-			return err
+		logger.Error(fmt.Sprintf("Erreur lors du lancement de la commande: %v", err))
+		return err
 	}
 	if err := cmd.Wait(); err != nil {
-			logger.Error(fmt.Sprintf("Erreur lors de la lecture du stderr: %v", err))
-			return err
+		logger.Error(fmt.Sprintf("Erreur lors de la lecture du stderr: %v", err))
+		return err
 	}
+	// Attendre que la goroutine de lecture se termine
+	wg.Wait()
+
 	logger.Info(fmt.Sprintf("Commande terminée avec le code %d", cmd.ProcessState.ExitCode()))
-	if(cmd.ProcessState.ExitCode() != 0) {
+	if cmd.ProcessState.ExitCode() != 0 {
 		logger.Error(fmt.Sprintf("Erreur lors de la restauration, code : %d", cmd.ProcessState.ExitCode()))
 		return fmt.Errorf("Commande terminée avec le code %d", cmd.ProcessState.ExitCode())
-	}else {
-		return nil
 	}
+	return nil
 }
 
 // restoreProcess gère le téléchargement, le déchiffrement et la décompression d'un fichier de sauvegarde.
