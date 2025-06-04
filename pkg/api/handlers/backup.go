@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"fmt"
+	"mini-backup/pkg/backup"
 	"mini-backup/pkg/utils"
 	"time"
 
@@ -58,11 +59,13 @@ import (
 // 	}
 
 // Retourner la configuration locale si remote_storage n'est pas utilisé
-// 	return c.JSON(fiber.Map{
-// 		"name":   backupName,
-// 		"config": backupConfig,
-// 	})
-// }
+//
+//		return c.JSON(fiber.Map{
+//			"name":   backupName,
+//			"config": backupConfig,
+//		})
+//	}
+//
 // GetNextBackup retourne le prochain backup prévu
 func GetNextBackup(c *fiber.Ctx) error {
 	// Charger la configuration
@@ -129,4 +132,24 @@ func getNextCronExecution(cronExpression string) (time.Time, error) {
 		return time.Time{}, err
 	}
 	return schedule.Next(time.Now()), nil
+}
+
+// RunBackupHandler lance manuellement un backup pour un nom donné
+func RunBackupHandler(c *fiber.Ctx) error {
+	name := c.Params("name")
+	if name == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Backup name is required",
+		})
+	}
+	err := backup.CoreBackup(name, false)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": err.Error(),
+		})
+	}
+	return c.JSON(fiber.Map{
+		"message": "Backup started successfully",
+		"name":    name,
+	})
 }

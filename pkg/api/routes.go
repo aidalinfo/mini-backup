@@ -26,4 +26,5 @@ func SetupRoutes(app *fiber.App) {
 	api.Get("/backups/last-logs", handlers.LastBackupsFromLogs)
 	api.Get("/backup/next-backup", handlers.GetNextBackup)
 	api.Get("/server/rstorage/count", handlers.GetRStorageCount)
+	api.Post("/backup/:name/run", handlers.RunBackupHandler)
 }
